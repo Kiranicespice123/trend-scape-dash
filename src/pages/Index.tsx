@@ -6,10 +6,10 @@ const Index = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="text-center space-y-6">
-        <h1 className="mb-4 text-4xl font-bold">TrendScape Dashboard</h1>
-        <p className="text-xl text-muted-foreground">Journey Page Analytics Platform</p>
+        <h1 className="text-4xl md:text-5xl font-bold">TrendScape Dashboard</h1>
+        <p className="text-lg md:text-xl text-muted-foreground">Journey Page Analytics Platform</p>
         <Button onClick={() => navigate("/analytics")} size="lg" className="gap-2">
           <BarChart3 className="h-5 w-5" />
           View Analytics Dashboard
