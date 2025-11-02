@@ -48,8 +48,8 @@ const Analytics = () => {
     new: item.new,
   })) || [];
 
-  const COLORS = ["hsl(222.2 47.4% 11.2%)", "hsl(210 40% 96.1%)", "hsl(217.2 32.6% 17.5%)"];
-  const USER_COLORS = ["hsl(217.2 91.2% 59.8%)", "hsl(142.1 76.2% 36.3%)"];
+  const COLORS = ["hsl(262 83% 58%)", "hsl(220 70% 55%)", "hsl(280 85% 60%)"];
+  const USER_COLORS = ["hsl(199 89% 48%)", "hsl(142 71% 45%)"];
 
   const chartConfig = {
     credential: { label: "Credential", color: COLORS[0] },
@@ -60,110 +60,135 @@ const Analytics = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-2 md:p-4">
+    <div className="min-h-screen p-2 md:p-4 animate-fade-in">
       <div className="mx-auto max-w-full space-y-3">
-        {/* Ultra Compact Header with inline stats */}
-        <div className="flex items-center justify-between gap-2 px-2 py-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-lg md:text-xl font-bold">Analytics</h1>
-            <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Total:</span>
-                <span className="font-bold">{analyticsData?.reduce((sum, item) => sum + item.totalUsers, 0) || 0}</span>
+        {/* Modern Header with Stats */}
+        <div className="glass-card rounded-2xl p-3 md:p-4 animate-slide-up">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Analytics Dashboard
+              </h1>
+            </div>
+            <Button
+              onClick={() => refetch()}
+              variant="ghost"
+              size="sm"
+              disabled={isLoading}
+              className="h-8 px-3 hover:bg-primary/10 transition-all duration-300"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">Total Users</div>
+              <div className="text-2xl md:text-3xl font-bold text-primary">
+                {analyticsData?.reduce((sum, item) => sum + item.totalUsers, 0) || 0}
               </div>
-              <span className="text-muted-foreground">|</span>
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">New:</span>
-                <span className="font-bold text-green-600 dark:text-green-400">{analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0}</span>
+            </div>
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">New</div>
+              <div className="text-2xl md:text-3xl font-bold text-success">
+                {analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0}
               </div>
-              <span className="text-muted-foreground">|</span>
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Return:</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">{analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0}</span>
+            </div>
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-info/10 to-info/5 border border-info/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">Returning</div>
+              <div className="text-2xl md:text-3xl font-bold text-info">
+                {analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0}
               </div>
             </div>
           </div>
-          <Button
-            onClick={() => refetch()}
-            variant="ghost"
-            size="sm"
-            disabled={isLoading}
-            className="h-7 w-7 p-0"
-          >
-            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          </Button>
         </div>
 
-        {/* Inline Minimal Filters */}
-        <div className="flex items-center gap-1 px-2 flex-wrap">
-          {(["daily", "weekly", "monthly", "yearly"] as TimePeriod[]).map((period) => (
-            <Button
-              key={period}
-              variant={timePeriod === period ? "default" : "ghost"}
-              onClick={() => setTimePeriod(period)}
-              className="h-6 text-[10px] px-2 font-medium"
-              size="sm"
-            >
-              {period.charAt(0).toUpperCase()}
-            </Button>
-          ))}
-          <span className="text-muted-foreground mx-1">|</span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1">
-                <CalendarIcon className="h-3 w-3" />
-                {dateRange.from ? format(dateRange.from, "MM/dd") : "From"}
+        {/* Modern Filters */}
+        <div className="glass-card rounded-xl p-2 flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1">
+            {(["daily", "weekly", "monthly", "yearly"] as TimePeriod[]).map((period) => (
+              <Button
+                key={period}
+                variant={timePeriod === period ? "default" : "ghost"}
+                onClick={() => setTimePeriod(period)}
+                className={cn(
+                  "h-7 text-xs px-3 font-medium rounded-lg transition-all duration-300",
+                  timePeriod === period
+                    ? "gradient-primary text-white shadow-lg shadow-primary/30"
+                    : "hover:bg-primary/10"
+                )}
+                size="sm"
+              >
+                {period.charAt(0).toUpperCase()}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-50 bg-popover" align="start">
-              <Calendar
-                mode="single"
-                selected={dateRange.from}
-                onSelect={(date) => setDateRange({ ...dateRange, from: date })}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1">
-                <CalendarIcon className="h-3 w-3" />
-                {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-50 bg-popover" align="start">
-              <Calendar
-                mode="single"
-                selected={dateRange.to}
-                onSelect={(date) => setDateRange({ ...dateRange, to: date })}
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+            ))}
+          </div>
+          <div className="h-4 w-px bg-border mx-1" />
+          <div className="flex gap-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg">
+                  <CalendarIcon className="h-3 w-3" />
+                  {dateRange.from ? format(dateRange.from, "MM/dd") : "From"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-50 glass-card" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.from}
+                  onSelect={(date) => setDateRange({ ...dateRange, from: date })}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg">
+                  <CalendarIcon className="h-3 w-3" />
+                  {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-50 glass-card" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.to}
+                  onSelect={(date) => setDateRange({ ...dateRange, to: date })}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
 
-        {/* Compact Charts & Data Grid */}
+        {/* Modern Charts & Data */}
         {isLoading ? (
-          <Card className="p-4">
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="glass-card rounded-2xl p-8">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading analytics...</p>
             </div>
-          </Card>
+          </div>
         ) : !analyticsData || analyticsData.length === 0 ? (
-          <Card className="p-4">
-            <p className="text-center text-muted-foreground text-sm">No data available</p>
-          </Card>
+          <div className="glass-card rounded-2xl p-8">
+            <p className="text-center text-muted-foreground">No data available</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* Combined Chart & Table */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="p-3 pb-2">
-                <CardTitle className="text-sm">Page Analytics</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0">
+            {/* Modern Chart Card */}
+            <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
+              <h3 className="text-sm font-semibold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                User Distribution
+              </h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* Pie Chart */}
                   <ChartContainer config={chartConfig} className="h-[200px] w-full">
@@ -220,17 +245,13 @@ const Analytics = () => {
                     ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+            </div>
 
-            {/* Compact Data Table */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="p-3 pb-2">
-                <CardTitle className="text-sm">Detailed Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0">
+            {/* Modern Data Table */}
+            <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500">
+              <h3 className="text-sm font-semibold mb-3 bg-gradient-to-r from-secondary to-info bg-clip-text text-transparent">
+                Detailed Analytics
+              </h3>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -251,38 +272,43 @@ const Analytics = () => {
                       </thead>
                       <tbody>
                         {analyticsData.map((item, index) => (
-                          <tr key={index} className="border-b border-border/50">
+                          <tr key={index} className="border-b border-border/50 hover:bg-primary/5 transition-colors duration-200">
                             <td className="py-2 px-2 capitalize font-medium">{item.page.replace(/_/g, " ")}</td>
-                            <td className="py-2 px-2 text-right font-bold">{item.totalUsers}</td>
-                            <td className="py-2 px-2 text-right text-green-600 dark:text-green-400">{item.new}</td>
-                            <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400">{item.old}</td>
+                            <td className="py-2 px-2 text-right font-bold text-primary">{item.totalUsers}</td>
+                            <td className="py-2 px-2 text-right font-semibold text-success">{item.new}</td>
+                            <td className="py-2 px-2 text-right font-semibold text-info">{item.old}</td>
                             <td className="py-2 px-2 text-right font-medium">
-                              {((item.new / item.totalUsers) * 100).toFixed(0)}%
+                              <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
+                                {((item.new / item.totalUsers) * 100).toFixed(0)}%
+                              </span>
                             </td>
                           </tr>
                         ))}
-                        <tr className="border-t-2 border-border font-bold">
+                        <tr className="border-t-2 border-primary/30 font-bold bg-gradient-to-r from-primary/5 to-accent/5">
                           <td className="py-2 px-2">Total</td>
-                          <td className="py-2 px-2 text-right">
+                          <td className="py-2 px-2 text-right text-primary">
                             {analyticsData.reduce((sum, item) => sum + item.totalUsers, 0)}
                           </td>
-                          <td className="py-2 px-2 text-right text-green-600 dark:text-green-400">
+                          <td className="py-2 px-2 text-right text-success">
                             {analyticsData.reduce((sum, item) => sum + item.new, 0)}
                           </td>
-                          <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400">
+                          <td className="py-2 px-2 text-right text-info">
                             {analyticsData.reduce((sum, item) => sum + item.old, 0)}
                           </td>
                           <td className="py-2 px-2 text-right">
-                            {((analyticsData.reduce((sum, item) => sum + item.new, 0) / 
-                               analyticsData.reduce((sum, item) => sum + item.totalUsers, 0)) * 100).toFixed(0)}%
+                            <span className="px-2 py-1 rounded-full bg-primary text-primary-foreground text-xs">
+                              {((analyticsData.reduce((sum, item) => sum + item.new, 0) / 
+                                 analyticsData.reduce((sum, item) => sum + item.totalUsers, 0)) * 100).toFixed(0)}%
+                            </span>
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
