@@ -3,44 +3,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, RefreshCw, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { useToast } from "@/hooks/use-toast";
 
 type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
 
 const Analytics = () => {
+  const { toast } = useToast();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("daily");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
     from: new Date(),
     to: new Date(),
   });
 
-  // Mock data based on the provided JSON
-  const analyticsData = [
-    { page: "credential", totalUsers: 215, old: 59, new: 156 },
-    { page: "referral_list", totalUsers: 23, old: 15, new: 8 },
-    { page: "chakra_list", totalUsers: 155, old: 49, new: 106 },
-  ];
+  const { data: analyticsData, isLoading, isError, error, refetch } = useAnalytics(timePeriod, dateRange);
+
+  if (isError) {
+    toast({
+      title: "Error loading analytics",
+      description: error instanceof Error ? error.message : "Failed to load analytics data",
+      variant: "destructive",
+    });
+  }
 
   // Data for three pie charts
-  const totalUsersData = analyticsData.map((item) => ({
+  const totalUsersData = analyticsData?.map((item) => ({
     name: item.page,
     value: item.totalUsers,
-  }));
+  })) || [];
 
   const oldVsNewData = [
-    { name: "Old Users", value: analyticsData.reduce((sum, item) => sum + item.old, 0) },
-    { name: "New Users", value: analyticsData.reduce((sum, item) => sum + item.new, 0) },
+    { name: "Old Users", value: analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0 },
+    { name: "New Users", value: analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0 },
   ];
 
-  const pageDistributionData = analyticsData.map((item) => ({
+  const pageDistributionData = analyticsData?.map((item) => ({
     name: item.page,
     old: item.old,
     new: item.new,
-  }));
+  })) || [];
 
   const COLORS = ["hsl(222.2 47.4% 11.2%)", "hsl(210 40% 96.1%)", "hsl(217.2 32.6% 17.5%)"];
   const USER_COLORS = ["hsl(217.2 91.2% 59.8%)", "hsl(142.1 76.2% 36.3%)"];
@@ -57,9 +63,25 @@ const Analytics = () => {
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">Journey page analytics overview</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Analytics Dashboard</h1>
+            <p className="text-muted-foreground">Journey page analytics overview • Real-time data</p>
+          </div>
+          <Button
+            onClick={() => refetch()}
+            variant="outline"
+            size="sm"
+            disabled={isLoading}
+            className="gap-2"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Refresh
+          </Button>
         </div>
 
         {/* Filters */}
@@ -137,41 +159,78 @@ const Analytics = () => {
         </Card>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl md:text-3xl font-bold">
-                {analyticsData.reduce((sum, item) => sum + item.totalUsers, 0)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">New Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl md:text-3xl font-bold">
-                {analyticsData.reduce((sum, item) => sum + item.new, 0)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Returning Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl md:text-3xl font-bold">
-                {analyticsData.reduce((sum, item) => sum + item.old, 0)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Loading...</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-9 bg-muted animate-pulse rounded" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl md:text-3xl font-bold">
+                  {analyticsData?.reduce((sum, item) => sum + item.totalUsers, 0) || 0}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">New Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl md:text-3xl font-bold">
+                  {analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Returning Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl md:text-3xl font-bold">
+                  {analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <CardTitle>Loading...</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : !analyticsData || analyticsData.length === 0 ? (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-center text-muted-foreground">No data available for the selected period</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Chart 1: Total Users by Page */}
           <Card>
             <CardHeader>
@@ -279,7 +338,8 @@ const Analytics = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        )}
 
         {/* Data Table */}
         <Card>
@@ -288,32 +348,40 @@ const Analytics = () => {
             <CardDescription>Page-wise breakdown of user analytics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium">Page</th>
-                    <th className="text-right py-3 px-4 font-medium">Total Users</th>
-                    <th className="text-right py-3 px-4 font-medium">New Users</th>
-                    <th className="text-right py-3 px-4 font-medium">Returning Users</th>
-                    <th className="text-right py-3 px-4 font-medium">% New</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analyticsData.map((item, index) => (
-                    <tr key={index} className="border-b border-border">
-                      <td className="py-3 px-4 capitalize">{item.page.replace("_", " ")}</td>
-                      <td className="py-3 px-4 text-right font-medium">{item.totalUsers}</td>
-                      <td className="py-3 px-4 text-right">{item.new}</td>
-                      <td className="py-3 px-4 text-right">{item.old}</td>
-                      <td className="py-3 px-4 text-right">
-                        {((item.new / item.totalUsers) * 100).toFixed(1)}%
-                      </td>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : !analyticsData || analyticsData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No data available</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-medium">Page</th>
+                      <th className="text-right py-3 px-4 font-medium">Total Users</th>
+                      <th className="text-right py-3 px-4 font-medium">New Users</th>
+                      <th className="text-right py-3 px-4 font-medium">Returning Users</th>
+                      <th className="text-right py-3 px-4 font-medium">% New</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {analyticsData.map((item, index) => (
+                      <tr key={index} className="border-b border-border">
+                        <td className="py-3 px-4 capitalize">{item.page.replace(/_/g, " ")}</td>
+                        <td className="py-3 px-4 text-right font-medium">{item.totalUsers}</td>
+                        <td className="py-3 px-4 text-right">{item.new}</td>
+                        <td className="py-3 px-4 text-right">{item.old}</td>
+                        <td className="py-3 px-4 text-right">
+                          {((item.new / item.totalUsers) * 100).toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
