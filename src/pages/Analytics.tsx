@@ -62,108 +62,88 @@ const Analytics = () => {
   return (
     <div className="min-h-screen bg-background p-2 md:p-4">
       <div className="mx-auto max-w-full space-y-3">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between gap-2 px-2">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground">Analytics</h1>
-            <p className="text-xs text-muted-foreground">Real-time • Auto-refresh 30s</p>
+        {/* Ultra Compact Header with inline stats */}
+        <div className="flex items-center justify-between gap-2 px-2 py-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-lg md:text-xl font-bold">Analytics</h1>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Total:</span>
+                <span className="font-bold">{analyticsData?.reduce((sum, item) => sum + item.totalUsers, 0) || 0}</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">New:</span>
+                <span className="font-bold text-green-600 dark:text-green-400">{analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0}</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Return:</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">{analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0}</span>
+              </div>
+            </div>
           </div>
           <Button
             onClick={() => refetch()}
-            variant="outline"
+            variant="ghost"
             size="sm"
             disabled={isLoading}
-            className="gap-1 h-8"
+            className="h-7 w-7 p-0"
           >
             {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
 
-        {/* Compact Filters */}
-        <Card className="border-none shadow-none bg-card/50">
-          <CardContent className="p-3 space-y-2">
-            <div className="flex flex-wrap gap-1">
-              {(["daily", "weekly", "monthly", "yearly"] as TimePeriod[]).map((period) => (
-                <Button
-                  key={period}
-                  variant={timePeriod === period ? "default" : "outline"}
-                  onClick={() => setTimePeriod(period)}
-                  className="capitalize h-7 text-xs px-3"
-                  size="sm"
-                >
-                  {period.charAt(0).toUpperCase()}
-                </Button>
-              ))}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs px-2 gap-1">
-                    <CalendarIcon className="h-3 w-3" />
-                    {dateRange.from ? format(dateRange.from, "MM/dd") : "From"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.from}
-                    onSelect={(date) => setDateRange({ ...dateRange, from: date })}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs px-2 gap-1">
-                    <CalendarIcon className="h-3 w-3" />
-                    {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.to}
-                    onSelect={(date) => setDateRange({ ...dateRange, to: date })}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Inline Minimal Filters */}
+        <div className="flex items-center gap-1 px-2 flex-wrap">
+          {(["daily", "weekly", "monthly", "yearly"] as TimePeriod[]).map((period) => (
+            <Button
+              key={period}
+              variant={timePeriod === period ? "default" : "ghost"}
+              onClick={() => setTimePeriod(period)}
+              className="h-6 text-[10px] px-2 font-medium"
+              size="sm"
+            >
+              {period.charAt(0).toUpperCase()}
+            </Button>
+          ))}
+          <span className="text-muted-foreground mx-1">|</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1">
+                <CalendarIcon className="h-3 w-3" />
+                {dateRange.from ? format(dateRange.from, "MM/dd") : "From"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-50 bg-popover" align="start">
+              <Calendar
+                mode="single"
+                selected={dateRange.from}
+                onSelect={(date) => setDateRange({ ...dateRange, from: date })}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1">
+                <CalendarIcon className="h-3 w-3" />
+                {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-50 bg-popover" align="start">
+              <Calendar
+                mode="single"
+                selected={dateRange.to}
+                onSelect={(date) => setDateRange({ ...dateRange, to: date })}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
-        {/* Compact Stats */}
-        {isLoading ? (
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-3">
-                <div className="h-12 bg-muted animate-pulse rounded" />
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            <Card className="p-2 md:p-3">
-              <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Total</div>
-              <div className="text-lg md:text-2xl font-bold">
-                {analyticsData?.reduce((sum, item) => sum + item.totalUsers, 0) || 0}
-              </div>
-            </Card>
-            <Card className="p-2 md:p-3">
-              <div className="text-[10px] md:text-xs text-muted-foreground font-medium">New</div>
-              <div className="text-lg md:text-2xl font-bold text-green-600 dark:text-green-400">
-                {analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0}
-              </div>
-            </Card>
-            <Card className="p-2 md:p-3">
-              <div className="text-[10px] md:text-xs text-muted-foreground font-medium">Return</div>
-              <div className="text-lg md:text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0}
-              </div>
-            </Card>
-          </div>
-        )}
 
         {/* Compact Charts & Data Grid */}
         {isLoading ? (
