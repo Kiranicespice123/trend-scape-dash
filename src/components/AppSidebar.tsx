@@ -15,7 +15,7 @@ import {
 
 const menuItems = [
   { title: "Home", url: "/", icon: Home },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Traffic and Acquisition", url: "/analytics", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
@@ -29,12 +29,12 @@ export function AppSidebar() {
           <div className="flex items-center justify-between px-2 py-2">
             {!isCollapsed && (
               <SidebarGroupLabel className="text-lg font-bold">
-                TrendScape
+                IceSpice Dashboard
               </SidebarGroupLabel>
             )}
             <SidebarTrigger className="ml-auto" />
           </div>
-          
+
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
