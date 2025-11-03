@@ -21,9 +21,10 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useToast } from "@/hooks/use-toast";
+import { TrendingUp, Calendar as CalendarIcon2 } from "lucide-react";
 
 type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -426,6 +427,162 @@ const Analytics = () => {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* NEW: Time Series Trend Section - Only for Weekly/Monthly */}
+        {!isLoading && analyticsData && analyticsData.length > 0 && (timePeriod === "weekly" || timePeriod === "monthly") && (
+          <div className="glass-card rounded-2xl p-4 animate-fade-in">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <h3 className="text-sm font-semibold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
+                {timePeriod === "monthly" ? "Monthly Trends" : "Weekly Trends"}
+              </h3>
+            </div>
+
+            {/* Trend Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+              {/* Credential Trend */}
+              <div className="glass-card rounded-xl p-3 border border-primary/20">
+                <div className="text-xs font-semibold text-primary mb-2">Credential Page</div>
+                <ChartContainer config={chartConfig} className="h-[120px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsData.filter(item => item.page === "credential")}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(value) => timePeriod === "monthly" ? value.slice(5) : value.slice(5)}
+                      />
+                      <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={30} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="totalUsers" stroke={COLORS[0]} strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="new" stroke={USER_COLORS[1]} strokeWidth={1.5} dot={{ r: 2 }} />
+                      <Line type="monotone" dataKey="old" stroke={USER_COLORS[0]} strokeWidth={1.5} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+
+              {/* Referral List Trend */}
+              <div className="glass-card rounded-xl p-3 border border-secondary/20">
+                <div className="text-xs font-semibold text-secondary mb-2">Referral List Page</div>
+                <ChartContainer config={chartConfig} className="h-[120px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsData.filter(item => item.page === "referral_list")}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(value) => timePeriod === "monthly" ? value.slice(5) : value.slice(5)}
+                      />
+                      <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={30} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="totalUsers" stroke={COLORS[1]} strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="new" stroke={USER_COLORS[1]} strokeWidth={1.5} dot={{ r: 2 }} />
+                      <Line type="monotone" dataKey="old" stroke={USER_COLORS[0]} strokeWidth={1.5} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+
+              {/* Chakra List Trend */}
+              <div className="glass-card rounded-xl p-3 border border-accent/20">
+                <div className="text-xs font-semibold text-accent mb-2">Chakra List Page</div>
+                <ChartContainer config={chartConfig} className="h-[120px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analyticsData.filter(item => item.page === "chakra_list")}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                        tickFormatter={(value) => timePeriod === "monthly" ? value.slice(5) : value.slice(5)}
+                      />
+                      <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={30} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="totalUsers" stroke={COLORS[2]} strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="new" stroke={USER_COLORS[1]} strokeWidth={1.5} dot={{ r: 2 }} />
+                      <Line type="monotone" dataKey="old" stroke={USER_COLORS[0]} strokeWidth={1.5} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+            </div>
+
+            {/* Combined Comparison Bar Chart */}
+            <div className="glass-card rounded-xl p-4 border border-primary/10">
+              <div className="text-xs font-semibold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Page Comparison - {timePeriod === "monthly" ? "Monthly" : "Daily"} Breakdown
+              </div>
+              <ChartContainer config={chartConfig} className="h-[180px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analyticsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      tickFormatter={(value) => timePeriod === "monthly" ? value.slice(5) : value.slice(5)}
+                    />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend wrapperStyle={{ fontSize: "10px" }} />
+                    <Bar dataKey="totalUsers" fill={COLORS[0]} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="new" fill={USER_COLORS[1]} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="old" fill={USER_COLORS[0]} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+
+            {/* Detailed Timeline Table */}
+            <div className="mt-4 overflow-x-auto">
+              <div className="text-xs font-semibold mb-2 text-muted-foreground">Detailed Timeline</div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-2 font-medium">{timePeriod === "monthly" ? "Month" : "Date"}</th>
+                    <th className="text-left py-2 px-2 font-medium">Page</th>
+                    <th className="text-right py-2 px-2 font-medium">Total</th>
+                    <th className="text-right py-2 px-2 font-medium">New</th>
+                    <th className="text-right py-2 px-2 font-medium">Return</th>
+                    <th className="text-right py-2 px-2 font-medium">Growth</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analyticsData.map((item, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-border/50 hover:bg-primary/5 transition-colors duration-200"
+                    >
+                      <td className="py-2 px-2 font-medium text-muted-foreground">
+                        {item.date ? (timePeriod === "monthly" ? item.date : format(new Date(item.date), "MMM dd")) : "-"}
+                      </td>
+                      <td className="py-2 px-2 capitalize">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-medium",
+                          item.page === "credential" && "bg-primary/10 text-primary",
+                          item.page === "referral_list" && "bg-secondary/10 text-secondary",
+                          item.page === "chakra_list" && "bg-accent/10 text-accent"
+                        )}>
+                          {item.page.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right font-bold text-primary">{item.totalUsers}</td>
+                      <td className="py-2 px-2 text-right font-semibold text-success">{item.new}</td>
+                      <td className="py-2 px-2 text-right font-semibold text-info">{item.old}</td>
+                      <td className="py-2 px-2 text-right">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-medium",
+                          item.new > item.old ? "bg-success/10 text-success" : "bg-info/10 text-info"
+                        )}>
+                          {item.new > item.old ? "↑" : "↓"} {((item.new / item.totalUsers) * 100).toFixed(0)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

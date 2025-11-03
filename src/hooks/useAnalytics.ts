@@ -8,11 +8,22 @@ interface AnalyticsData {
   totalUsers: number;
   old: number;
   new: number;
+  date?: string; // Added for monthly/weekly data
+}
+
+interface NestedAnalyticsData {
+  date: string;
+  pages: Array<{
+    page: string;
+    totalUsers: number;
+    old: number;
+    new: number;
+  }>;
 }
 
 interface AnalyticsResponse {
   code: number;
-  data: AnalyticsData[];
+  data: AnalyticsData[] | NestedAnalyticsData[];
   message: string;
 }
 
@@ -55,7 +66,22 @@ export const useAnalytics = (
         throw new Error(result.message || "Failed to fetch analytics data");
       }
 
-      return result.data;
+      // Check if data is nested (monthly/weekly format)
+      if (result.data.length > 0 && 'pages' in result.data[0]) {
+        // Flatten nested structure: combine date with each page's data
+        const flattenedData: AnalyticsData[] = [];
+        (result.data as NestedAnalyticsData[]).forEach(dateEntry => {
+          dateEntry.pages.forEach(page => {
+            flattenedData.push({
+              ...page,
+              date: dateEntry.date
+            });
+          });
+        });
+        return flattenedData;
+      }
+
+      return result.data as AnalyticsData[];
     },
     refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
