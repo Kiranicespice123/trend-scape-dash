@@ -231,7 +231,7 @@ const Analytics = () => {
           )}
         </div>
 
-        {/* Modern Charts & Data */}
+        {/* Modern Charts & Data - Only for Daily/Yearly */}
         {isLoading ? (
           <div className="glass-card rounded-2xl p-8">
             <div className="flex flex-col items-center justify-center gap-4">
@@ -247,7 +247,7 @@ const Analytics = () => {
               No data available
             </p>
           </div>
-        ) : (
+        ) : timePeriod !== "weekly" && timePeriod !== "monthly" ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {/* Modern Chart Card */}
             <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
@@ -434,7 +434,7 @@ const Analytics = () => {
               )}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* NEW: Time Series Trend Section - Only for Weekly/Monthly */}
         {!isLoading && analyticsData && analyticsData.length > 0 && (timePeriod === "weekly" || timePeriod === "monthly") && (
