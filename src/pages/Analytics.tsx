@@ -62,23 +62,36 @@ const Analytics = () => {
       value: item.totalUsers,
     })) || [];
 
+  // Aggregate data by page for display (especially important for weekly/monthly)
+  const aggregatedByPage = analyticsData?.reduce((acc, item) => {
+    const existing = acc.find(a => a.page === item.page);
+    if (existing) {
+      existing.totalUsers += item.totalUsers;
+      existing.old += item.old;
+      existing.new += item.new;
+    } else {
+      acc.push({
+        page: item.page,
+        totalUsers: item.totalUsers,
+        old: item.old,
+        new: item.new
+      });
+    }
+    return acc;
+  }, [] as Array<{ page: string; totalUsers: number; old: number; new: number }>) || [];
+
   const oldVsNewData = [
     {
       name: "Old Users",
-      value: analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0,
+      value: aggregatedByPage.reduce((sum, item) => sum + item.old, 0),
     },
     {
       name: "New Users",
-      value: analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0,
+      value: aggregatedByPage.reduce((sum, item) => sum + item.new, 0),
     },
   ];
 
-  const pageDistributionData =
-    analyticsData?.map((item) => ({
-      name: item.page,
-      old: item.old,
-      new: item.new,
-    })) || [];
+  const pageDistributionData = aggregatedByPage;
 
   const COLORS = ["hsl(262 83% 58%)", "hsl(220 70% 55%)", "hsl(280 85% 60%)"];
   const USER_COLORS = ["hsl(199 89% 48%)", "hsl(142 71% 45%)"];
@@ -126,16 +139,13 @@ const Analytics = () => {
                 Total Users
               </div>
               <div className="text-2xl md:text-3xl font-bold text-primary">
-                {analyticsData?.reduce(
-                  (sum, item) => sum + item.totalUsers,
-                  0
-                ) || 0}
+                {aggregatedByPage.reduce((sum, item) => sum + item.totalUsers, 0)}
               </div>
             </div>
             <div className="text-center p-2 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">New</div>
               <div className="text-2xl md:text-3xl font-bold text-success">
-                {analyticsData?.reduce((sum, item) => sum + item.new, 0) || 0}
+                {aggregatedByPage.reduce((sum, item) => sum + item.new, 0)}
               </div>
             </div>
             <div className="text-center p-2 rounded-xl bg-gradient-to-br from-info/10 to-info/5 border border-info/20 hover:scale-105 transition-transform duration-300">
@@ -143,7 +153,7 @@ const Analytics = () => {
                 Returning
               </div>
               <div className="text-2xl md:text-3xl font-bold text-info">
-                {analyticsData?.reduce((sum, item) => sum + item.old, 0) || 0}
+                {aggregatedByPage.reduce((sum, item) => sum + item.old, 0)}
               </div>
             </div>
           </div>
@@ -247,7 +257,7 @@ const Analytics = () => {
               No data available
             </p>
           </div>
-        ) : timePeriod !== "weekly" && timePeriod !== "monthly" ? (
+        ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {/* Modern Chart Card */}
             <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
@@ -292,10 +302,10 @@ const Analytics = () => {
                 {/* Page Breakdown */}
                 <div className="space-y-2">
                   {pageDistributionData.map((item) => (
-                    <div key={item.name} className="space-y-1">
+                    <div key={item.page} className="space-y-1">
                       <div className="flex justify-between text-[11px]">
                         <span className="font-medium capitalize">
-                          {item.name.replace(/_/g, " ")}
+                          {item.page.replace(/_/g, " ")}
                         </span>
                         <span className="text-muted-foreground">
                           {item.old + item.new}
@@ -367,7 +377,7 @@ const Analytics = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {analyticsData.map((item, index) => (
+                      {aggregatedByPage.map((item, index) => (
                         <tr
                           key={index}
                           className="border-b border-border/50 hover:bg-primary/5 transition-colors duration-200"
@@ -394,19 +404,19 @@ const Analytics = () => {
                       <tr className="border-t-2 border-primary/30 font-bold bg-gradient-to-r from-primary/5 to-accent/5">
                         <td className="py-2 px-2">Total</td>
                         <td className="py-2 px-2 text-right text-primary">
-                          {analyticsData.reduce(
+                          {aggregatedByPage.reduce(
                             (sum, item) => sum + item.totalUsers,
                             0
                           )}
                         </td>
                         <td className="py-2 px-2 text-right text-success">
-                          {analyticsData.reduce(
+                          {aggregatedByPage.reduce(
                             (sum, item) => sum + item.new,
                             0
                           )}
                         </td>
                         <td className="py-2 px-2 text-right text-info">
-                          {analyticsData.reduce(
+                          {aggregatedByPage.reduce(
                             (sum, item) => sum + item.old,
                             0
                           )}
@@ -414,11 +424,11 @@ const Analytics = () => {
                         <td className="py-2 px-2 text-right">
                           <span className="px-2 py-1 rounded-full bg-primary text-primary-foreground text-xs">
                             {(
-                              (analyticsData.reduce(
+                              (aggregatedByPage.reduce(
                                 (sum, item) => sum + item.new,
                                 0
                               ) /
-                                analyticsData.reduce(
+                                aggregatedByPage.reduce(
                                   (sum, item) => sum + item.totalUsers,
                                   0
                                 )) *
@@ -434,7 +444,7 @@ const Analytics = () => {
               )}
             </div>
           </div>
-        ) : null}
+        )}
 
         {/* NEW: Time Series Trend Section - Only for Weekly/Monthly */}
         {!isLoading && analyticsData && analyticsData.length > 0 && (timePeriod === "weekly" || timePeriod === "monthly") && (
