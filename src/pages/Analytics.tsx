@@ -171,59 +171,64 @@ const Analytics = () => {
               )
             )}
           </div>
-          <div className="h-4 w-px bg-border mx-1" />
-          <div className="flex gap-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
-                >
-                  <CalendarIcon className="h-3 w-3" />
-                  {dateRange.from ? format(dateRange.from, "MM/dd") : "From"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto p-0 z-50 glass-card"
-                align="start"
-              >
-                <Calendar
-                  mode="single"
-                  selected={dateRange.from}
-                  onSelect={(date) =>
-                    setDateRange({ ...dateRange, from: date })
-                  }
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
-                >
-                  <CalendarIcon className="h-3 w-3" />
-                  {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto p-0 z-50 glass-card"
-                align="start"
-              >
-                <Calendar
-                  mode="single"
-                  selected={dateRange.to}
-                  onSelect={(date) => setDateRange({ ...dateRange, to: date })}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          {/* Only show date pickers for daily/yearly, not weekly/monthly */}
+          {timePeriod !== "weekly" && timePeriod !== "monthly" && (
+            <>
+              <div className="h-4 w-px bg-border mx-1" />
+              <div className="flex gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {dateRange.from ? format(dateRange.from, "MM/dd") : "From"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 z-50 glass-card"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) =>
+                        setDateRange({ ...dateRange, from: date })
+                      }
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 z-50 glass-card"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) => setDateRange({ ...dateRange, to: date })}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Modern Charts & Data */}
@@ -437,8 +442,90 @@ const Analytics = () => {
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="h-5 w-5 text-primary" />
               <h3 className="text-sm font-semibold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-                {timePeriod === "monthly" ? "Monthly Trends" : "Weekly Trends"}
+                {timePeriod === "monthly" ? "Monthly Progress" : "Weekly Progress"}
               </h3>
+            </div>
+
+            {/* Circular Progress Indicators */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">{(() => {
+              // Group data by date to get unique dates
+              const dateGroups = new Map<string, typeof analyticsData>();
+              analyticsData.forEach(item => {
+                if (item.date) {
+                  if (!dateGroups.has(item.date)) {
+                    dateGroups.set(item.date, []);
+                  }
+                  dateGroups.get(item.date)?.push(item);
+                }
+              });
+
+              const dates = Array.from(dateGroups.keys()).sort();
+              const maxUsers = Math.max(...analyticsData.map(d => d.totalUsers));
+
+              return (
+                <>
+                  {["credential", "referral_list", "chakra_list"].map((pageName, pageIdx) => {
+                    const pageData = dates.map(date => {
+                      const items = dateGroups.get(date) || [];
+                      const pageItem = items.find(item => item.page === pageName);
+                      return {
+                        date,
+                        totalUsers: pageItem?.totalUsers || 0,
+                        new: pageItem?.new || 0,
+                        old: pageItem?.old || 0
+                      };
+                    });
+
+                    return (
+                      <div key={pageName} className="glass-card rounded-xl p-4 border border-primary/10">
+                        <div className="text-xs font-semibold mb-4 capitalize text-center" style={{ color: COLORS[pageIdx] }}>
+                          {pageName.replace(/_/g, " ")}
+                        </div>
+                        
+                        <div className="grid grid-cols-7 gap-2">
+                          {pageData.map((dayData, idx) => {
+                            const progress = maxUsers > 0 ? (dayData.totalUsers / maxUsers) * 100 : 0;
+                            const dayLabel = timePeriod === "weekly" 
+                              ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][idx] || dayData.date.slice(-2)
+                              : dayData.date.slice(-2);
+                            
+                            return (
+                              <div key={idx} className="flex flex-col items-center gap-1">
+                                <div 
+                                  className="relative w-10 h-10 rounded-full flex items-center justify-center"
+                                  style={{
+                                    background: `conic-gradient(hsl(25 95% 53%) ${progress}%, hsl(var(--border)) ${progress}%)`,
+                                    padding: '2px'
+                                  }}
+                                >
+                                  <div className="w-full h-full rounded-full glass-card flex items-center justify-center">
+                                    <span className="text-[10px] font-bold" style={{ color: COLORS[pageIdx] }}>
+                                      {dayData.totalUsers > 999 ? `${(dayData.totalUsers / 1000).toFixed(1)}k` : dayData.totalUsers}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="text-[9px] text-muted-foreground font-medium">{dayLabel}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-2 text-[10px]">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: USER_COLORS[1] }} />
+                            <span className="text-muted-foreground">New: {pageData.reduce((sum, d) => sum + d.new, 0)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: USER_COLORS[0] }} />
+                            <span className="text-muted-foreground">Return: {pageData.reduce((sum, d) => sum + d.old, 0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            })()}
             </div>
 
             {/* Trend Charts Grid */}

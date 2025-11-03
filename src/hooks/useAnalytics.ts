@@ -46,12 +46,15 @@ export const useAnalytics = (
       
       url.searchParams.append("range", rangeParam);
       
-      if (dateRange.from) {
-        url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
-      }
-      
-      if (dateRange.to) {
-        url.searchParams.append("to", format(dateRange.to, "yyyy-MM-dd"));
+      // Only add date range for daily and yearly, not for weekly or monthly
+      if (timePeriod !== "weekly" && timePeriod !== "monthly") {
+        if (dateRange.from) {
+          url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
+        }
+        
+        if (dateRange.to) {
+          url.searchParams.append("to", format(dateRange.to, "yyyy-MM-dd"));
+        }
       }
 
       const response = await fetch(url.toString());
