@@ -42,12 +42,18 @@ export const useAnalytics = (
     queryKey: ["analytics", timePeriod, dateRange],
     queryFn: async () => {
       const rangeParam = RANGE_MAP[timePeriod];
-      const url = new URL("https://gamestaging.icespice.com/store_store/test_vs_result");
       
-      url.searchParams.append("range", rangeParam);
-      
-      // Only add date range for daily and yearly, not for weekly or monthly
-      if (timePeriod !== "weekly" && timePeriod !== "monthly") {
+      // Use different endpoints based on time period
+      let url: URL;
+      if (timePeriod === "weekly" || timePeriod === "monthly") {
+        // Weekly and Monthly use test_vs_result_daily endpoint
+        url = new URL("https://gamestaging.icespice.com/store_store/test_vs_result_daily");
+        url.searchParams.append("range", rangeParam);
+      } else {
+        // Daily and Yearly use test_vs_result endpoint with date range
+        url = new URL("https://gamestaging.icespice.com/store_store/test_vs_result");
+        url.searchParams.append("range", rangeParam);
+        
         if (dateRange.from) {
           url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
         }
