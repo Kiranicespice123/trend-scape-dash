@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 type TimePeriod = "daily" | "weekly" | "monthly" | "overall";
 
 interface RangeData {
-  range: string;
-  count: number;
-  description?: string;
+  reward_from_range: string;
+  reward_to_range: string;
+  total_users: number;
 }
 
 interface TopEarner {
@@ -15,19 +15,11 @@ interface TopEarner {
   rank: number;
 }
 
-interface SpiceGoldStats {
-  total_users_with_balance: number;
-  average_points_per_user: number;
-  highest_balance: number;
-}
-
 interface SpiceGoldResponse {
   code: number;
   data: {
-    daily_ranges?: RangeData[];
-    overall_ranges?: RangeData[];
-    top_earners?: TopEarner[];
-    stats?: SpiceGoldStats;
+    total_users: number;
+    ranges: RangeData[];
   };
   message: string;
 }
