@@ -9,7 +9,8 @@ interface RangeData {
 }
 
 interface WeeklyRangeData {
-  reward_range: string;
+  reward_from_range: string;
+  reward_to_range: string;
   total_users: number;
 }
 
@@ -54,6 +55,7 @@ export interface NormalizedSpiceGoldData {
   data: {
     total_users: number;
     ranges: RangeData[];
+    weeklyBreakdown?: WeeklyDateData[]; // For weekly view, include daily breakdown
   };
   message: string;
 }
@@ -61,6 +63,11 @@ export interface NormalizedSpiceGoldData {
 export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
   return useQuery<NormalizedSpiceGoldData>({
     queryKey: ["spicegold-analytics", timePeriod],
+    enabled: true,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     queryFn: async () => {
       let url: string;
 
@@ -75,7 +82,7 @@ export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
           break;
         case "monthly":
           url =
-            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics?range=M";
+            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily?range=M";
           break;
         case "overall":
           url =
@@ -100,17 +107,62 @@ export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
 
       // Normalize different response structures
       if (timePeriod === "monthly") {
-        // Monthly response: data is array of RangeData directly
-        const monthlyData = result as MonthlyResponse;
-        const totalUsers = monthlyData.data.reduce(
+        // Monthly response: data is array of dates, each with ranges (same structure as weekly)
+        const monthlyData = result as WeeklyResponse;
+
+        // Check if data exists and is an array
+        if (!monthlyData.data || !Array.isArray(monthlyData.data)) {
+          throw new Error("Invalid monthly data format");
+        }
+
+        // Aggregate ranges across all dates using reward_from_range and reward_to_range
+        const rangeMap = new Map<string, number>();
+
+        monthlyData.data.forEach((dateData) => {
+          if (dateData.ranges && Array.isArray(dateData.ranges)) {
+            dateData.ranges.forEach((range) => {
+              // Create a unique key from from_range and to_range
+              // Use a special separator to avoid conflicts with range values
+              const rangeKey = `${range.reward_from_range}__${
+                range.reward_to_range || ""
+              }`;
+              const currentTotal = rangeMap.get(rangeKey) || 0;
+              rangeMap.set(rangeKey, currentTotal + range.total_users);
+            });
+          }
+        });
+
+        // Convert to RangeData format
+        const aggregatedRanges: RangeData[] = Array.from(
+          rangeMap.entries()
+        ).map(([rangeKey, totalUsers]) => {
+          // Parse the key back to from and to
+          const [from, to] = rangeKey.split("__");
+          return {
+            reward_from_range: from || "",
+            reward_to_range: to || "",
+            total_users: totalUsers,
+          };
+        });
+
+        // Sort ranges by from_range
+        aggregatedRanges.sort((a, b) => {
+          const aFrom = parseInt(a.reward_from_range) || 0;
+          const bFrom = parseInt(b.reward_from_range) || 0;
+          return aFrom - bFrom;
+        });
+
+        const totalUsers = aggregatedRanges.reduce(
           (sum, range) => sum + range.total_users,
           0
         );
+
         return {
           code: monthlyData.code,
           data: {
             total_users: totalUsers,
-            ranges: monthlyData.data,
+            ranges: aggregatedRanges,
+            weeklyBreakdown: monthlyData.data, // Include daily breakdown for monthly view
           },
           message: monthlyData.message,
         };
@@ -118,44 +170,37 @@ export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
         // Weekly response: data is array of dates, each with ranges
         const weeklyData = result as WeeklyResponse;
 
-        // Aggregate ranges across all dates
+        // Aggregate ranges across all dates using reward_from_range and reward_to_range
         const rangeMap = new Map<string, number>();
 
+        // Check if data exists and is an array
+        if (!weeklyData.data || !Array.isArray(weeklyData.data)) {
+          throw new Error("Invalid weekly data format");
+        }
+
         weeklyData.data.forEach((dateData) => {
-          dateData.ranges.forEach((range) => {
-            // Parse reward_range like "0–100" or "1001+"
-            const rangeKey = range.reward_range;
-            const currentTotal = rangeMap.get(rangeKey) || 0;
-            rangeMap.set(rangeKey, currentTotal + range.total_users);
-          });
+          if (dateData.ranges && Array.isArray(dateData.ranges)) {
+            dateData.ranges.forEach((range) => {
+              // Create a unique key from from_range and to_range
+              // Use a special separator to avoid conflicts with range values
+              const rangeKey = `${range.reward_from_range}__${
+                range.reward_to_range || ""
+              }`;
+              const currentTotal = rangeMap.get(rangeKey) || 0;
+              rangeMap.set(rangeKey, currentTotal + range.total_users);
+            });
+          }
         });
 
         // Convert to RangeData format
         const aggregatedRanges: RangeData[] = Array.from(
           rangeMap.entries()
-        ).map(([rewardRange, totalUsers]) => {
-          // Parse "0–100", "0-100" or "1001+" format
-          // Handle both en dash (–) and regular hyphen (-)
-          if (rewardRange.includes("–") || rewardRange.includes("-")) {
-            const separator = rewardRange.includes("–") ? "–" : "-";
-            const [from, to] = rewardRange.split(separator);
-            return {
-              reward_from_range: from.trim(),
-              reward_to_range: to.trim(),
-              total_users: totalUsers,
-            };
-          } else if (rewardRange.endsWith("+")) {
-            const from = rewardRange.replace("+", "").trim();
-            return {
-              reward_from_range: from,
-              reward_to_range: "",
-              total_users: totalUsers,
-            };
-          }
-          // Fallback
+        ).map(([rangeKey, totalUsers]) => {
+          // Parse the key back to from and to
+          const [from, to] = rangeKey.split("__");
           return {
-            reward_from_range: rewardRange.trim(),
-            reward_to_range: "",
+            reward_from_range: from || "",
+            reward_to_range: to || "",
             total_users: totalUsers,
           };
         });
@@ -177,15 +222,73 @@ export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
           data: {
             total_users: totalUsers,
             ranges: aggregatedRanges,
+            weeklyBreakdown: weeklyData.data, // Include daily breakdown for weekly view
           },
           message: weeklyData.message,
         };
+      } else if (timePeriod === "daily") {
+        // Daily response: data is array of dates, each with ranges (same structure as weekly/monthly)
+        const dailyData = result as WeeklyResponse;
+
+        // Check if data exists and is an array
+        if (!dailyData.data || !Array.isArray(dailyData.data)) {
+          throw new Error("Invalid daily data format");
+        }
+
+        // For daily, there should be only one date entry, but we'll handle it the same way
+        // Aggregate ranges across all dates (usually just one date for daily)
+        const rangeMap = new Map<string, number>();
+
+        dailyData.data.forEach((dateData) => {
+          if (dateData.ranges && Array.isArray(dateData.ranges)) {
+            dateData.ranges.forEach((range) => {
+              const rangeKey = `${range.reward_from_range}__${
+                range.reward_to_range || ""
+              }`;
+              const currentTotal = rangeMap.get(rangeKey) || 0;
+              rangeMap.set(rangeKey, currentTotal + range.total_users);
+            });
+          }
+        });
+
+        // Convert to RangeData format
+        const aggregatedRanges: RangeData[] = Array.from(
+          rangeMap.entries()
+        ).map(([rangeKey, totalUsers]) => {
+          const [from, to] = rangeKey.split("__");
+          return {
+            reward_from_range: from || "",
+            reward_to_range: to || "",
+            total_users: totalUsers,
+          };
+        });
+
+        // Sort ranges by from_range
+        aggregatedRanges.sort((a, b) => {
+          const aFrom = parseInt(a.reward_from_range) || 0;
+          const bFrom = parseInt(b.reward_from_range) || 0;
+          return aFrom - bFrom;
+        });
+
+        const totalUsers = aggregatedRanges.reduce(
+          (sum, range) => sum + range.total_users,
+          0
+        );
+
+        return {
+          code: dailyData.code,
+          data: {
+            total_users: totalUsers,
+            ranges: aggregatedRanges,
+            weeklyBreakdown: dailyData.data, // Include daily breakdown for daily view
+          },
+          message: dailyData.message,
+        };
       } else {
-        // Standard response format (daily, overall)
+        // Standard response format (overall)
         return result as StandardResponse;
       }
     },
-    refetchInterval: 30000,
   });
 };
 

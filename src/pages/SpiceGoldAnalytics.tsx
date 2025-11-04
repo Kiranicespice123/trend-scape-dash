@@ -38,24 +38,33 @@ import { useToast } from "@/hooks/use-toast";
 type TimePeriod = "daily" | "weekly" | "monthly" | "overall";
 
 // Bracket-specific colors matching the framework recommendations
+// Same colors used for all time periods (Day, Week, Month, Overall)
+// Colors are determined by the range boundaries, not the time period
 const getBracketColor = (
   from: number,
   to: number | null,
   period: TimePeriod
 ): string => {
-  const max = to || from + 10000;
-  if (max <= 50) return "#ef4444"; // 🟥 Dormant/New
-  if (max <= 100) return "#c026d3"; // 🟪 Low Activity
-  if (max <= 400) return "#2563eb"; // 🔵 Moderate Activity
-  if (max <= 700) return "#facc15"; // 🟡 High Activity
-  if (max <= 1000) return "#16a34a"; // 🟢 Top Daily Performer
-  if (max <= 4000) return "#0284c7"; // 🔷 Consistent User
-  if (max <= 7000) return "#f97316"; // 🟠 Engaged User
-  if (max <= 15000) return "#7e22ce"; // 🟣 High Retention User
-  if (max <= 23000) return "#78350f"; // 🟤 Core Loyal User
-  if (max <= 31000) return "#f59e0b"; // 🏅 Top Monthly Performer
-  if (max <= 62000) return "#06b6d4"; // 💎 Elite / Long-Term Loyalist
-  if (max <= 93000) return "#4f46e5"; // 👑 Legacy Tier
+  // Determine the maximum value for the range
+  // For open-ended ranges like "1001+", use a large number
+  const max = to || 100000;
+
+  // Apply consistent colors based on the range boundaries
+  // Same SG ranges always get the same colors regardless of time period
+  if (max <= 50) return "#ef4444"; // 🟥 Dormant/New (0-50 SG)
+  if (max <= 100) return "#c026d3"; // 🟪 Low Activity (51-100 SG)
+  if (max <= 400) return "#2563eb"; // 🔵 Moderate Activity (101-400 SG)
+  if (max <= 700) return "#facc15"; // 🟡 High Activity (401-700 SG)
+  if (max <= 1000) return "#16a34a"; // 🟢 Top Daily Performer (701-1000 SG)
+  if (max <= 4000) return "#0284c7"; // 🔷 Consistent User (1001-4000 SG)
+  if (max <= 7000) return "#f97316"; // 🟠 Engaged User (4001-7000 SG)
+  if (max <= 15000) return "#7e22ce"; // 🟣 High Retention User (7001-15000 SG)
+  if (max <= 23000) return "#78350f"; // 🟤 Core Loyal User (15001-23000 SG)
+  if (max <= 31000) return "#f59e0b"; // 🏅 Top Monthly Performer (23001-31000 SG)
+  if (max <= 62000) return "#06b6d4"; // 💎 Elite / Long-Term Loyalist (31001-62000 SG)
+  if (max <= 93000) return "#4f46e5"; // 👑 Legacy Tier (62001-93000 SG)
+
+  // Default for any range above 93000
   return "#1e293b";
 };
 
@@ -204,39 +213,41 @@ const SpiceGoldAnalytics = () => {
 
   // Transform data for charts with enhanced bracket labels
   const chartData =
-    analyticsData?.data?.ranges?.map((item, index) => {
-      const fromRange = parseInt(item.reward_from_range);
-      const toRange =
-        item.reward_to_range && item.reward_to_range.trim()
-          ? parseInt(item.reward_to_range)
-          : null;
+    analyticsData?.data?.ranges
+      ?.filter((item) => item && item.total_users > 0) // Filter out empty ranges
+      .map((item, index) => {
+        const fromRange = parseInt(item.reward_from_range) || 0;
+        const toRange =
+          item.reward_to_range && item.reward_to_range.trim()
+            ? parseInt(item.reward_to_range)
+            : null;
 
-      let rangeName = "";
-      if (toRange) {
-        rangeName = `${fromRange}-${toRange}`;
-      } else {
-        rangeName = `${fromRange}+`;
-      }
+        let rangeName = "";
+        if (toRange !== null && !isNaN(toRange)) {
+          rangeName = `${fromRange}-${toRange}`;
+        } else {
+          rangeName = `${fromRange}+`;
+        }
 
-      const bracketInfo = getBracketLabel(fromRange, toRange, timePeriod);
-      const percentage = (
-        (item.total_users / (analyticsData?.data?.total_users || 1)) *
-        100
-      ).toFixed(1);
+        const bracketInfo = getBracketLabel(fromRange, toRange, timePeriod);
+        const percentage = (
+          (item.total_users / (analyticsData?.data?.total_users || 1)) *
+          100
+        ).toFixed(1);
 
-      return {
-        name: rangeName,
-        displayName: ` ${rangeName} SG`,
-        bracketLabel: bracketInfo.label,
-        bracketEmoji: `${bracketInfo.emoji} `,
-        bracketInsight: bracketInfo.insight,
-        users: item.total_users,
-        percentage: parseFloat(percentage),
-        color: getBracketColor(fromRange, toRange, timePeriod),
-        fromRange,
-        toRange,
-      };
-    }) || [];
+        return {
+          name: rangeName,
+          displayName: ` ${rangeName} SG`,
+          bracketLabel: bracketInfo.label,
+          bracketEmoji: `${bracketInfo.emoji} `,
+          bracketInsight: bracketInfo.insight,
+          users: item.total_users,
+          percentage: parseFloat(percentage),
+          color: getBracketColor(fromRange, toRange, timePeriod),
+          fromRange,
+          toRange,
+        };
+      }) || [];
 
   // Calculate specific bracket metrics
   const getBracketUsers = (from: number, to: number | null) => {
@@ -822,6 +833,304 @@ const SpiceGoldAnalytics = () => {
                   </div>
                 </div>
               )}
+              {/* Daily/Weekly/Monthly Daily Breakdown - Single Consolidated View */}
+              {(timePeriod === "daily" ||
+                timePeriod === "weekly" ||
+                timePeriod === "monthly") &&
+                analyticsData?.data?.weeklyBreakdown && (
+                  <div className="glass-card rounded-2xl p-4 hover:s  hadow-2xl hover:shadow-secondary/10 transition-all duration-500 lg:col-span-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="text-sm font-semibold bg-gradient-to-r from-secondary to-info bg-clip-text text-transparent">
+                          {timePeriod === "daily"
+                            ? "Daily"
+                            : timePeriod === "weekly"
+                            ? "Weekly"
+                            : "Monthly"}{" "}
+                          Breakdown
+                        </h3>
+                        {analyticsData.data.weeklyBreakdown.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {analyticsData.data.weeklyBreakdown[0]?.date} -{" "}
+                            {
+                              analyticsData.data.weeklyBreakdown[
+                                analyticsData.data.weeklyBreakdown.length - 1
+                              ]?.date
+                            }
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!analyticsData?.data?.weeklyBreakdown) return;
+
+                          // Get all unique ranges
+                          const allRanges =
+                            analyticsData.data.weeklyBreakdown[0]?.ranges.filter(
+                              (r) => {
+                                return analyticsData.data.weeklyBreakdown.some(
+                                  (day) =>
+                                    day.ranges.find(
+                                      (r2) =>
+                                        r2.reward_from_range ===
+                                          r.reward_from_range &&
+                                        r2.reward_to_range === r.reward_to_range
+                                    )?.total_users > 0
+                                );
+                              }
+                            ) || [];
+
+                          // Create CSV headers
+                          const headers = [
+                            "Date",
+                            ...allRanges.map((r) => {
+                              const fromRange =
+                                parseInt(r.reward_from_range) || 0;
+                              const toRange =
+                                r.reward_to_range && r.reward_to_range.trim()
+                                  ? parseInt(r.reward_to_range)
+                                  : null;
+                              return toRange
+                                ? `${fromRange}-${toRange} SG`
+                                : `${fromRange}+ SG`;
+                            }),
+                            "Total Users",
+                          ];
+
+                          // Create CSV rows
+                          const rows = analyticsData.data.weeklyBreakdown.map(
+                            (dateData) => {
+                              const totalDayUsers = dateData.ranges.reduce(
+                                (sum, r) => sum + r.total_users,
+                                0
+                              );
+                              const row = [dateData.date];
+
+                              allRanges.forEach((baseRange) => {
+                                const matchingRange = dateData.ranges.find(
+                                  (r) =>
+                                    r.reward_from_range ===
+                                      baseRange.reward_from_range &&
+                                    r.reward_to_range ===
+                                      baseRange.reward_to_range
+                                );
+                                row.push(
+                                  (matchingRange?.total_users || 0).toString()
+                                );
+                              });
+
+                              row.push(totalDayUsers.toString());
+                              return row;
+                            }
+                          );
+
+                          // Combine headers and rows
+                          const csvContent = [
+                            headers.join(","),
+                            ...rows.map((row) => row.join(",")),
+                          ].join("\n");
+
+                          // Download CSV
+                          const blob = new Blob([csvContent], {
+                            type: "text/csv;charset=utf-8;",
+                          });
+                          const link = document.createElement("a");
+                          if (link.download !== undefined) {
+                            const url = URL.createObjectURL(blob);
+                            link.setAttribute("href", url);
+                            const startDate =
+                              analyticsData.data.weeklyBreakdown[0]?.date ||
+                              "weekly";
+                            const endDate =
+                              analyticsData.data.weeklyBreakdown[
+                                analyticsData.data.weeklyBreakdown.length - 1
+                              ]?.date || "";
+                            link.setAttribute(
+                              "download",
+                              `${timePeriod}_breakdown_${startDate}_to_${endDate}.csv`
+                            );
+                            link.style.visibility = "hidden";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            toast({
+                              title: "Download Started",
+                              description: `${
+                                timePeriod === "weekly" ? "Weekly" : "Monthly"
+                              } breakdown CSV is being downloaded.`,
+                            });
+                          } else {
+                            toast({
+                              title: "Download Failed",
+                              description:
+                                "Your browser does not support downloading files directly.",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        className="h-8 px-3 text-xs rounded-lg border-secondary/30 text-secondary hover:bg-secondary/10 transition-all duration-300"
+                      >
+                        <Download className="h-3 w-3 mr-1" /> Download CSV
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-2 font-medium sticky left-0 bg-card z-10">
+                              Date
+                            </th>
+                            {analyticsData.data.weeklyBreakdown[0]?.ranges
+                              .filter((r) => {
+                                // Show ranges that have users in at least one day
+                                return analyticsData.data.weeklyBreakdown.some(
+                                  (day) =>
+                                    day.ranges.find(
+                                      (r2) =>
+                                        r2.reward_from_range ===
+                                          r.reward_from_range &&
+                                        r2.reward_to_range === r.reward_to_range
+                                    )?.total_users > 0
+                                );
+                              })
+                              .map((range, idx) => {
+                                const fromRange =
+                                  parseInt(range.reward_from_range) || 0;
+                                const toRange =
+                                  range.reward_to_range &&
+                                  range.reward_to_range.trim()
+                                    ? parseInt(range.reward_to_range)
+                                    : null;
+                                const rangeName = toRange
+                                  ? `${fromRange}-${toRange}`
+                                  : `${fromRange}+`;
+                                const color = getBracketColor(
+                                  fromRange,
+                                  toRange,
+                                  timePeriod
+                                );
+                                return (
+                                  <th
+                                    key={idx}
+                                    className="text-center py-2 px-2 font-medium min-w-[80px]"
+                                  >
+                                    <div
+                                      className="w-2.5 h-2.5 rounded-full mx-auto mb-1"
+                                      style={{ backgroundColor: color }}
+                                    />
+                                    <div className="text-[9px]">
+                                      {rangeName} SG
+                                    </div>
+                                  </th>
+                                );
+                              })}
+                            <th className="text-right py-2 px-2 font-medium">
+                              Total
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analyticsData.data.weeklyBreakdown.map(
+                            (dateData, dateIndex) => {
+                              const totalDayUsers = dateData.ranges.reduce(
+                                (sum, r) => sum + r.total_users,
+                                0
+                              );
+                              const allRanges =
+                                analyticsData.data.weeklyBreakdown[0]?.ranges.filter(
+                                  (r) => {
+                                    return analyticsData.data.weeklyBreakdown.some(
+                                      (day) =>
+                                        day.ranges.find(
+                                          (r2) =>
+                                            r2.reward_from_range ===
+                                              r.reward_from_range &&
+                                            r2.reward_to_range ===
+                                              r.reward_to_range
+                                        )?.total_users > 0
+                                    );
+                                  }
+                                ) || [];
+
+                              return (
+                                <tr
+                                  key={dateIndex}
+                                  className="border-b border-border/50 hover:bg-primary/5 transition-colors"
+                                >
+                                  <td className="py-2 px-2 font-medium sticky left-0 bg-card z-10">
+                                    {dateData.date}
+                                  </td>
+                                  {allRanges.map((baseRange, rangeIdx) => {
+                                    const matchingRange = dateData.ranges.find(
+                                      (r) =>
+                                        r.reward_from_range ===
+                                          baseRange.reward_from_range &&
+                                        r.reward_to_range ===
+                                          baseRange.reward_to_range
+                                    );
+                                    const users =
+                                      matchingRange?.total_users || 0;
+                                    const percentage =
+                                      totalDayUsers > 0
+                                        ? (
+                                            (users / totalDayUsers) *
+                                            100
+                                          ).toFixed(1)
+                                        : "0.0";
+                                    const fromRange =
+                                      parseInt(baseRange.reward_from_range) ||
+                                      0;
+                                    const toRange =
+                                      baseRange.reward_to_range &&
+                                      baseRange.reward_to_range.trim()
+                                        ? parseInt(baseRange.reward_to_range)
+                                        : null;
+                                    const color = getBracketColor(
+                                      fromRange,
+                                      toRange,
+                                      timePeriod
+                                    );
+
+                                    return (
+                                      <td
+                                        key={rangeIdx}
+                                        className="text-center py-2 px-2"
+                                      >
+                                        {users > 0 ? (
+                                          <div className="flex flex-col items-center gap-0.5">
+                                            <div
+                                              className="text-xs font-bold"
+                                              style={{ color: color }}
+                                            >
+                                              {users.toLocaleString()}
+                                            </div>
+                                            <div className="text-[9px] text-muted-foreground">
+                                              {percentage}%
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <span className="text-muted-foreground/50">
+                                            -
+                                          </span>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="text-right py-2 px-2 font-bold text-primary">
+                                    {totalDayUsers.toLocaleString()}
+                                  </td>
+                                </tr>
+                              );
+                            }
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
               {/* Detailed Summary Table */}
               {showDetailedSummary && chartData.length > 0 && (
                 <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500 lg:col-span-2">
