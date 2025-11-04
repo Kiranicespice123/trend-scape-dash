@@ -12,6 +12,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import React from "react";
 
 // Small React component wrapper for the remote PNG so it can be used
@@ -24,8 +25,8 @@ const SpiceGoldIcon = ({
   <img
     src="https://appcdn.goqii.com/storeimg/79306_1762237023.png"
     alt="SpiceGold"
-    className={className}
-    style={{ height: "25px", width: "25px", marginLeft: "-5px" }}
+    className={cn("h-4 w-4 object-contain flex-shrink-0", className)}
+    style={{ aspectRatio: "1", objectFit: "contain" }}
     {...props}
   />
 );
