@@ -9,10 +9,12 @@ interface RangeData {
 }
 
 interface TopEarner {
-  user_id: string;
-  username?: string;
-  total_points: number;
   rank: number;
+  linkedId: number;
+  totalRewardPoints: number;
+  developerId: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface SpiceGoldResponse {

@@ -49,6 +49,18 @@ const SpiceGoldAnalytics = () => {
   const topEarners = topEarnersData?.data?.slice(0, 10) || [];
   const totalUsers = analyticsData?.data?.total_users || 0;
 
+  // Calculate total SpiceGold earned (estimated from ranges)
+  const estimatedTotalSG = chartData.reduce((total, item) => {
+    // Use midpoint of range as estimate
+    const midpoint = item.toRange 
+      ? (item.fromRange + item.toRange) / 2 
+      : item.fromRange + 5000; // For open-ended range, add buffer
+    return total + (midpoint * item.users);
+  }, 0);
+
+  // Calculate total from top 10 earners
+  const topEarnersTotal = topEarners.reduce((sum, earner) => sum + (earner.totalRewardPoints || 0), 0);
+
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
       {/* Header */}
@@ -76,21 +88,59 @@ const SpiceGoldAnalytics = () => {
         </div>
       ) : (
         <>
-          {/* Total Users Card */}
-          <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle className="text-sm font-medium">Total Users with SpiceGold</CardTitle>
-                <CardDescription className="mt-1">
-                  Users who have earned SG points
-                </CardDescription>
-              </div>
-              <Users className="h-8 w-8 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-primary">{totalUsers.toLocaleString()}</div>
-            </CardContent>
-          </Card>
+          {/* Stats Cards Row */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-sm font-medium">Total Users with SpiceGold</CardTitle>
+                  <CardDescription className="mt-1">
+                    Users who have earned SG points
+                  </CardDescription>
+                </div>
+                <Users className="h-8 w-8 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-primary">{totalUsers.toLocaleString()}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border-chart-2/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-sm font-medium">Total SpiceGold Earned (Est.)</CardTitle>
+                  <CardDescription className="mt-1">
+                    Estimated total across all users
+                  </CardDescription>
+                </div>
+                <Coins className="h-8 w-8 text-chart-2" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold" style={{ color: 'hsl(var(--chart-2))' }}>
+                  {Math.round(estimatedTotalSG).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">SG Points</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-chart-3/10 to-chart-3/5 border-chart-3/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-sm font-medium">Top 10 Earners Total</CardTitle>
+                  <CardDescription className="mt-1">
+                    Combined SG of top performers
+                  </CardDescription>
+                </div>
+                <Award className="h-8 w-8 text-chart-3" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold" style={{ color: 'hsl(var(--chart-3))' }}>
+                  {topEarnersTotal.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">SG Points</p>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Charts Grid */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -310,7 +360,7 @@ const SpiceGoldAnalytics = () => {
                 <div className="space-y-3">
                   {topEarners.map((earner, index) => (
                     <div
-                      key={earner.user_id}
+                      key={earner.linkedId}
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -323,13 +373,15 @@ const SpiceGoldAnalytics = () => {
                           {index + 1}
                         </div>
                         <div>
-                          <p className="font-medium">{earner.username || earner.user_id}</p>
-                          <p className="text-xs text-muted-foreground">User ID: {earner.user_id}</p>
+                          <p className="font-medium">
+                            {earner.firstName} {earner.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">ID: {earner.linkedId}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-primary">
-                          {(earner.total_points ?? 0).toLocaleString()}
+                          {(earner.totalRewardPoints ?? 0).toLocaleString()}
                         </p>
                         <p className="text-xs text-muted-foreground">SG Points</p>
                       </div>
