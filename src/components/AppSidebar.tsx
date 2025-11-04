@@ -12,10 +12,31 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import React from "react";
 
+// Small React component wrapper for the remote PNG so it can be used
+// interchangeably with the lucide-react icon components below (they all
+// accept `className`). This avoids the invalid `import "https://..." as ...` syntax.
+const SpiceGoldIcon = ({
+  className,
+  ...props
+}: React.ImgHTMLAttributes<HTMLImageElement>) => (
+  <img
+    src="https://appcdn.goqii.com/storeimg/79306_1762237023.png"
+    alt="SpiceGold"
+    className={className}
+    style={{ height: "25px", width: "25px", marginLeft: "-5px" }}
+    {...props}
+  />
+);
 const menuItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Traffic and Acquisition", url: "/analytics", icon: BarChart3 },
+  {
+    title: "SpiceGold Report",
+    url: "/spicegold_analytics",
+    icon: SpiceGoldIcon,
+  },
 ];
 
 export function AppSidebar() {

@@ -165,7 +165,7 @@ const Analytics = () => {
     0
   );
 
-  const COLORS = ["hsl(262 83% 58%)", "hsl(220 70% 55%)", "hsl(280 85% 60%)"];
+  const COLORS = ["hsl(25 95% 53%)", "hsl(220 70% 55%)", "hsl(280 85% 60%)"]; // Total Users changed to orange
   // Three colors for Old Users, New Users, and First Time Users (matching pie chart)
   const USER_COLORS = [
     "hsl(199 89% 48%)", // Old Users (light blue)
@@ -332,11 +332,11 @@ const Analytics = () => {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 hover:scale-105 transition-transform duration-300">
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">
                 Total Users (Landing Page)
               </div>
-              <div className="text-2xl md:text-3xl font-bold text-primary">
+              <div className="text-2xl md:text-3xl font-bold text-orange-500">
                 {credentialPageData?.totalUsers || 0}
               </div>
             </div>
@@ -532,7 +532,8 @@ const Analytics = () => {
                     User Visits by Page
                   </h4>
                   {pageDistributionData.map((item) => {
-                    const pageTotal = item.totalUsers;
+                    // Calculate the sum of visible segments
+                    const pageTotal = item.new + item.old + item.firstTime;
                     const newUsersPercentage =
                       pageTotal > 0
                         ? ((item.new / pageTotal) * 100).toFixed(0)
@@ -558,9 +559,9 @@ const Analytics = () => {
                           </span>
                           <span
                             className="text-muted-foreground"
-                            title={`Total: ${pageTotal} users`}
+                            title={`Total: ${pageTotal} users (${item.new} + ${item.old} + ${item.firstTime})`}
                           >
-                            {overallPagePercentage}%
+                            {pageTotal} users
                           </span>
                         </div>
                         <div className="flex gap-0.5 h-4 rounded overflow-hidden">
@@ -570,10 +571,9 @@ const Analytics = () => {
                               width: `${newUsersPercentage}%`,
                               backgroundColor: USER_COLORS[2], // Returning Not Registered (purple)
                             }}
-                            title={`New: ${item.new} users`}
+                            title={`Returning Not Registered: ${item.new} users`}
                           >
-                            {parseFloat(newUsersPercentage) > 0 &&
-                              `${newUsersPercentage}%`}
+                            {item.new > 0 && item.new}
                           </div>
                           <div
                             className="flex items-center justify-center text-[10px] font-medium text-primary-foreground"
@@ -581,10 +581,9 @@ const Analytics = () => {
                               width: `${oldUsersPercentage}%`,
                               backgroundColor: USER_COLORS[0], // Old Users (light blue)
                             }}
-                            title={`Old: ${item.old} users`}
+                            title={`Returning Registered: ${item.old} users`}
                           >
-                            {parseFloat(oldUsersPercentage) > 0 &&
-                              `${oldUsersPercentage}%`}
+                            {item.old > 0 && item.old}
                           </div>
                           <div
                             className="flex items-center justify-center text-[10px] font-medium text-primary-foreground"
@@ -592,10 +591,9 @@ const Analytics = () => {
                               width: `${firstTimeUsersPercentage}%`,
                               backgroundColor: USER_COLORS[1], // New - First Time Users (green)
                             }}
-                            title={`First Time: ${item.firstTime} users`}
+                            title={`New - First Time: ${item.firstTime} users`}
                           >
-                            {parseFloat(firstTimeUsersPercentage) > 0 &&
-                              `${firstTimeUsersPercentage}%`}
+                            {item.firstTime > 0 && item.firstTime}
                           </div>
                         </div>
                       </div>
@@ -670,7 +668,7 @@ const Analytics = () => {
                             <td className="py-2 px-2 capitalize font-medium">
                               {getPageLabel(item.page)}
                             </td>
-                            <td className="py-2 px-2 text-right font-bold text-primary">
+                            <td className="py-2 px-2 text-right font-bold text-orange-500">
                               {item.totalUsers}
                             </td>
                             <td className="py-2 px-2 text-right font-semibold text-purple-500">
@@ -686,7 +684,7 @@ const Analytics = () => {
                         ))}
                         <tr className="border-t-2 border-primary/30 font-bold bg-gradient-to-r from-primary/5 to-accent/5">
                           <td className="py-2 px-2">Total</td>
-                          <td className="py-2 px-2 text-right text-primary">
+                          <td className="py-2 px-2 text-right text-orange-500">
                             {aggregatedByPage.reduce(
                               (sum, item) => sum + item.totalUsers,
                               0

@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
+import SpiceGoldAnalytics from "./pages/SpiceGoldAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,10 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route
+                  path="/spicegold_analytics"
+                  element={<SpiceGoldAnalytics />}
+                />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
