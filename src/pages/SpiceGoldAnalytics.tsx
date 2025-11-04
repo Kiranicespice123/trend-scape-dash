@@ -69,7 +69,9 @@ const SpiceGoldAnalytics = () => {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.total_users_with_balance.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">
+                    {(stats.total_users_with_balance ?? 0).toLocaleString()}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Users holding valid SG balance
                   </p>
@@ -82,7 +84,9 @@ const SpiceGoldAnalytics = () => {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.average_points_per_user.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">
+                    {(stats.average_points_per_user ?? 0).toFixed(2)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Average earning health across player base
                   </p>
@@ -95,7 +99,9 @@ const SpiceGoldAnalytics = () => {
                   <Award className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.highest_balance.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">
+                    {(stats.highest_balance ?? 0).toLocaleString()}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Top performing player SG balance
                   </p>
@@ -273,7 +279,9 @@ const SpiceGoldAnalytics = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-primary">{earner.total_points.toLocaleString()}</p>
+                          <p className="font-bold text-primary">
+                            {(earner.total_points ?? 0).toLocaleString()}
+                          </p>
                           <p className="text-xs text-muted-foreground">SG Points</p>
                         </div>
                       </div>
