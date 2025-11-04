@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import { useSpiceGoldAnalytics, useTopEarners } from "@/hooks/useSpiceGoldAnalytics";
 import { Loader2, TrendingUp, Users, Award, Coins } from "lucide-react";
 
@@ -26,50 +26,51 @@ const SpiceGoldAnalytics = () => {
   const isLoading = isLoadingAnalytics || isLoadingEarners;
 
   // Transform data for charts
-  const chartData = analyticsData?.data?.ranges?.map((item) => {
+  const chartData = analyticsData?.data?.ranges?.map((item, index) => {
     const fromRange = parseInt(item.reward_from_range);
     const toRange = item.reward_to_range ? parseInt(item.reward_to_range) : null;
     
     let rangeName = "";
     if (toRange) {
-      rangeName = `${fromRange.toLocaleString()}-${toRange.toLocaleString()} SG`;
+      rangeName = `${fromRange}-${toRange}`;
     } else {
-      rangeName = `${fromRange.toLocaleString()}+ SG`;
+      rangeName = `${fromRange}+`;
     }
+
+    const percentage = ((item.total_users / (analyticsData?.data?.total_users || 1)) * 100).toFixed(1);
 
     return {
       name: rangeName,
       users: item.total_users,
-      fromRange,
-      toRange,
-      percentage: ((item.total_users / (analyticsData?.data?.total_users || 1)) * 100).toFixed(1),
+      percentage: parseFloat(percentage),
+      color: COLORS[index % COLORS.length],
     };
   }) || [];
 
-  const topEarners = topEarnersData?.data?.slice(0, 10) || [];
+  const topEarners = topEarnersData?.data?.slice(0, 5) || [];
   const totalUsers = analyticsData?.data?.total_users || 0;
 
   // Calculate total SpiceGold earned (estimated from ranges)
   const estimatedTotalSG = chartData.reduce((total, item) => {
-    // Use midpoint of range as estimate
-    const midpoint = item.toRange 
-      ? (item.fromRange + item.toRange) / 2 
-      : item.fromRange + 5000; // For open-ended range, add buffer
-    return total + (midpoint * item.users);
+    const rangeMatch = item.name.match(/(\d+)-(\d+)|(\d+)\+/);
+    if (rangeMatch) {
+      const from = parseInt(rangeMatch[1] || rangeMatch[3]);
+      const to = rangeMatch[2] ? parseInt(rangeMatch[2]) : from + 5000;
+      const midpoint = (from + to) / 2;
+      return total + (midpoint * item.users);
+    }
+    return total;
   }, 0);
 
-  // Calculate total from top 10 earners
   const topEarnersTotal = topEarners.reduce((sum, earner) => sum + (earner.totalRewardPoints || 0), 0);
 
   return (
-    <div className="min-h-screen bg-background p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen bg-background p-4 space-y-4">
+      {/* Compact Header */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">SpiceGold Analytics</h1>
-          <p className="text-muted-foreground mt-1">
-            Track user earnings distribution and top performers
-          </p>
+          <h1 className="text-2xl font-bold">SpiceGold Analytics</h1>
+          <p className="text-sm text-muted-foreground">User earnings & distribution</p>
         </div>
         
         <Tabs value={timePeriod} onValueChange={(value) => setTimePeriod(value as TimePeriod)}>
@@ -88,302 +89,162 @@ const SpiceGoldAnalytics = () => {
         </div>
       ) : (
         <>
-          {/* Stats Cards Row */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-sm font-medium">Total Users with SpiceGold</CardTitle>
-                  <CardDescription className="mt-1">
-                    Users who have earned SG points
-                  </CardDescription>
-                </div>
-                <Users className="h-8 w-8 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-primary">{totalUsers.toLocaleString()}</div>
-              </CardContent>
+          {/* Compact Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card className="p-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground">Total Users</div>
+              </div>
+              <div className="text-xl font-bold mt-1">{totalUsers.toLocaleString()}</div>
             </Card>
 
-            <Card className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border-chart-2/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-sm font-medium">Total SpiceGold Earned (Est.)</CardTitle>
-                  <CardDescription className="mt-1">
-                    Estimated total across all users
-                  </CardDescription>
-                </div>
-                <Coins className="h-8 w-8 text-chart-2" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold" style={{ color: 'hsl(var(--chart-2))' }}>
-                  {Math.round(estimatedTotalSG).toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">SG Points</p>
-              </CardContent>
+            <Card className="p-3">
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground">Total SG (Est.)</div>
+              </div>
+              <div className="text-xl font-bold mt-1">{Math.round(estimatedTotalSG).toLocaleString()}</div>
             </Card>
 
-            <Card className="bg-gradient-to-br from-chart-3/10 to-chart-3/5 border-chart-3/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-sm font-medium">Top 10 Earners Total</CardTitle>
-                  <CardDescription className="mt-1">
-                    Combined SG of top performers
-                  </CardDescription>
-                </div>
-                <Award className="h-8 w-8 text-chart-3" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold" style={{ color: 'hsl(var(--chart-3))' }}>
-                  {topEarnersTotal.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">SG Points</p>
-              </CardContent>
+            <Card className="p-3">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground">Top 5 Total</div>
+              </div>
+              <div className="text-xl font-bold mt-1">{topEarnersTotal.toLocaleString()}</div>
+            </Card>
+
+            <Card className="p-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground">Avg per User</div>
+              </div>
+              <div className="text-xl font-bold mt-1">
+                {totalUsers > 0 ? Math.round(estimatedTotalSG / totalUsers).toLocaleString() : 0}
+              </div>
             </Card>
           </div>
 
-          {/* Charts Grid */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Bar Chart - User Distribution by Range */}
+          {/* Combined Chart & Top Earners */}
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Main Distribution Chart */}
             {chartData.length > 0 && (
               <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    SpiceGold Distribution by Range
-                  </CardTitle>
-                  <CardDescription>
-                    Number of users in each earning range
-                  </CardDescription>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">SG Distribution by Range</CardTitle>
+                  <CardDescription className="text-xs">User count and percentage per earning range</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                       <XAxis 
                         dataKey="name" 
                         className="text-xs"
                         angle={-45}
                         textAnchor="end"
-                        height={100}
+                        height={70}
+                        label={{ value: 'SG Range', position: 'insideBottom', offset: -50, fontSize: 12 }}
                       />
-                      <YAxis className="text-xs" />
+                      <YAxis className="text-xs" label={{ value: 'Users', angle: -90, position: 'insideLeft', fontSize: 12 }} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: 'hsl(var(--card))',
                           border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
+                          borderRadius: '6px',
+                          fontSize: '12px'
                         }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             return (
-                              <div className="bg-card p-4 rounded-lg border shadow-lg">
-                                <p className="font-semibold text-lg">{payload[0].payload.name}</p>
-                                <p className="text-primary font-bold text-2xl mt-2">
-                                  {payload[0].value?.toLocaleString()} users
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {payload[0].payload.percentage}% of total users
-                                </p>
+                              <div className="bg-card p-2 rounded-lg border shadow-lg">
+                                <p className="font-semibold text-sm">{payload[0].payload.name} SG</p>
+                                <p className="text-primary font-bold">{payload[0].value?.toLocaleString()} users</p>
+                                <p className="text-xs text-muted-foreground">{payload[0].payload.percentage}% of total</p>
                               </div>
                             );
                           }
                           return null;
                         }}
                       />
-                      <Legend />
-                      <Bar 
-                        dataKey="users" 
-                        fill="hsl(var(--primary))" 
-                        radius={[8, 8, 0, 0]}
-                        name="Number of Users"
-                      />
+                      <Bar dataKey="users" radius={[4, 4, 0, 0]}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             )}
 
-            {/* Area Chart - Cumulative Distribution */}
-            {chartData.length > 0 && (
+            {/* Compact Top Earners */}
+            {topEarners.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Coins className="h-5 w-5" />
-                    Earnings Trend Visualization
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Award className="h-4 w-4" />
+                    Top 5 Players
                   </CardTitle>
-                  <CardDescription>
-                    User count across earning ranges
-                  </CardDescription>
+                  <CardDescription className="text-xs">Highest SG earners</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="name" 
-                        className="text-xs"
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis className="text-xs" />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="users" 
-                        stroke="hsl(var(--primary))" 
-                        fill="hsl(var(--primary))"
-                        fillOpacity={0.3}
-                        name="Users"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Pie Chart - Distribution Percentage */}
-            {chartData.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Percentage Distribution</CardTitle>
-                  <CardDescription>User percentage in each range</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ percentage }) => `${percentage}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="users"
+                  <div className="space-y-2">
+                    {topEarners.map((earner, index) => (
+                      <div
+                        key={earner.linkedId}
+                        className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
                       >
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-card p-3 rounded-lg border shadow-lg">
-                                <p className="font-semibold">{payload[0].payload.name}</p>
-                                <p className="text-primary font-bold mt-1">
-                                  {payload[0].value?.toLocaleString()} users
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {payload[0].payload.percentage}% of total
-                                </p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                        <div className="flex items-center gap-2">
+                          <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                            index === 0 ? 'bg-yellow-500 text-yellow-950' :
+                            index === 1 ? 'bg-gray-400 text-gray-950' :
+                            index === 2 ? 'bg-amber-600 text-amber-950' :
+                            'bg-primary/20 text-primary'
+                          }`}>
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{earner.firstName} {earner.lastName}</p>
+                            <p className="text-xs text-muted-foreground">ID: {earner.linkedId}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-primary">
+                            {(earner.totalRewardPoints ?? 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             )}
           </div>
 
-          {/* Detailed Table */}
+          {/* Compact Range Details Table */}
           {chartData.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle>Detailed Breakdown</CardTitle>
-                <CardDescription>Complete user distribution across all ranges</CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Range Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {chartData.map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      className="flex items-center gap-2 p-2 rounded-md bg-muted/30"
                     >
-                      <div className="flex items-center gap-4">
-                        <div 
-                          className="w-4 h-4 rounded-full" 
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                        />
-                        <div>
-                          <p className="font-semibold">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Range: {item.fromRange.toLocaleString()} - {item.toRange ? item.toRange.toLocaleString() : '∞'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-lg text-primary">
-                          {item.users.toLocaleString()}
-                        </p>
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0" 
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{item.name} SG</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.percentage}% of users
+                          {item.users.toLocaleString()} ({item.percentage}%)
                         </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Top Earners Section */}
-          {topEarners.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5" />
-                  High-Value Players (Top 10)
-                </CardTitle>
-                <CardDescription>
-                  Top performers ranked by total SG accumulated
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {topEarners.map((earner, index) => (
-                    <div
-                      key={earner.linkedId}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                          index === 0 ? 'bg-yellow-500 text-yellow-950' :
-                          index === 1 ? 'bg-gray-400 text-gray-950' :
-                          index === 2 ? 'bg-amber-600 text-amber-950' :
-                          'bg-primary/20 text-primary'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {earner.firstName} {earner.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">ID: {earner.linkedId}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-primary">
-                          {(earner.totalRewardPoints ?? 0).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">SG Points</p>
                       </div>
                     </div>
                   ))}
