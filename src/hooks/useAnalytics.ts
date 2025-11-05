@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
-type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
+type TimePeriod = "daily" | "weekly" | "monthly";
 
 interface AnalyticsData {
   page: string;
@@ -33,7 +33,6 @@ const RANGE_MAP: Record<TimePeriod, string> = {
   daily: "D",
   weekly: "W",
   monthly: "M",
-  yearly: "Y",
 };
 
 export const useAnalytics = (
@@ -43,30 +42,22 @@ export const useAnalytics = (
   return useQuery<AnalyticsData[]>({
     queryKey: ["analytics", timePeriod, dateRange],
     queryFn: async () => {
-      const rangeParam = RANGE_MAP[timePeriod];
-
-      // Use different endpoints based on time period
+      // If date range is provided, always send from and to (no range parameter)
       let url: URL;
-      if (timePeriod === "weekly" || timePeriod === "monthly") {
-        // Weekly and Monthly use test_vs_result_daily endpoint
+      if (dateRange?.from && dateRange?.to) {
+        url = new URL(
+          "https://gamestaging.icespice.com/store_store/test_vs_result_daily"
+        );
+        url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
+        url.searchParams.append("to", format(dateRange.to, "yyyy-MM-dd"));
+      } else {
+        // If no date range, use the time period range parameter
+        const rangeParam = RANGE_MAP[timePeriod];
+        // All periods use test_vs_result_daily endpoint
         url = new URL(
           "https://gamestaging.icespice.com/store_store/test_vs_result_daily"
         );
         url.searchParams.append("range", rangeParam);
-      } else {
-        // Daily and Yearly use test_vs_result endpoint with date range
-        url = new URL(
-          "https://gamestaging.icespice.com/store_store/test_vs_result"
-        );
-        url.searchParams.append("range", rangeParam);
-
-        if (dateRange.from) {
-          url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
-        }
-
-        if (dateRange.to) {
-          url.searchParams.append("to", format(dateRange.to, "yyyy-MM-dd"));
-        }
       }
 
       const response = await fetch(url.toString());

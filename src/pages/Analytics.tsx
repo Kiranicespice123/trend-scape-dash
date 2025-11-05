@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,7 +14,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Download, CalendarIcon, RefreshCw, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subDays,
+} from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import {
   ChartContainer,
@@ -39,18 +47,42 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, Calendar as CalendarIcon2 } from "lucide-react";
 
-type TimePeriod = "daily" | "weekly" | "monthly" | "yearly";
+type TimePeriod = "daily" | "weekly" | "monthly";
 
 const Analytics = () => {
   const { toast } = useToast();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("daily");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
-    from: new Date(),
-    to: new Date(),
+    from: undefined,
+    to: undefined,
   });
+  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false);
   const [showDetailedTimeline, setShowDetailedTimeline] = useState(false);
 
+  // Set default date range when time period changes
+  useEffect(() => {
+    const today = new Date();
+    const yesterday = subDays(today, 1);
+
+    if (timePeriod === "daily") {
+      // Set to yesterday (both from and to)
+      setDateRange({ from: yesterday, to: yesterday });
+    } else if (timePeriod === "weekly") {
+      // Set to start and end of current week
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+      setDateRange({ from: weekStart, to: weekEnd });
+    } else if (timePeriod === "monthly") {
+      // Set to start and end of current month
+      const monthStart = startOfMonth(today);
+      const monthEnd = endOfMonth(today);
+      setDateRange({ from: monthStart, to: monthEnd });
+    }
+    setShowDateRangePicker(false);
+  }, [timePeriod]);
+
+  // Always pass date range for daily, weekly, and monthly (defaults are set in useEffect)
   const {
     data: analyticsData,
     isLoading,
@@ -102,7 +134,7 @@ const Analytics = () => {
       );
     }
 
-    // For daily/yearly, return the first landing page entry
+    // For daily, return the first landing page entry
     return credentialEntries[0];
   })();
 
@@ -370,90 +402,155 @@ const Analytics = () => {
         {/* Modern Filters */}
         <div className="glass-card rounded-xl p-2 flex items-center gap-2 flex-wrap">
           <div className="flex gap-1">
-            {(["daily", "weekly", "monthly", "yearly"] as TimePeriod[]).map(
-              (period) => (
-                <Button
-                  key={period}
-                  variant={timePeriod === period ? "default" : "ghost"}
-                  onClick={() => setTimePeriod(period)}
-                  className={cn(
-                    "h-7 text-xs px-3 font-medium rounded-lg transition-all duration-300",
-                    timePeriod === period
-                      ? "gradient-primary text-white shadow-lg shadow-primary/30"
-                      : "hover:bg-primary/10"
-                  )}
-                  size="sm"
-                >
-                  {period.charAt(0).toUpperCase()}
-                </Button>
-              )
-            )}
+            {(["daily", "weekly", "monthly"] as TimePeriod[]).map((period) => (
+              <Button
+                key={period}
+                variant={timePeriod === period ? "default" : "ghost"}
+                onClick={() => setTimePeriod(period)}
+                className={cn(
+                  "h-7 text-xs px-3 font-medium rounded-lg transition-all duration-300",
+                  timePeriod === period
+                    ? "gradient-primary text-white shadow-lg shadow-primary/30"
+                    : "hover:bg-primary/10"
+                )}
+                size="sm"
+              >
+                {period === "daily"
+                  ? "Day"
+                  : period === "weekly"
+                  ? "Week"
+                  : "Month"}
+              </Button>
+            ))}
           </div>
-          {/* Only show date pickers for daily/yearly, not weekly/monthly */}
-          {timePeriod !== "weekly" && timePeriod !== "monthly" && (
-            <>
-              <div className="h-4 w-px bg-border mx-1" />
-              <div className="flex gap-1">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
-                    >
-                      <CalendarIcon className="h-3 w-3" />
-                      {dateRange.from
-                        ? format(dateRange.from, "MM/dd")
-                        : "From"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0 z-50 glass-card"
-                    align="start"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.from}
-                      onSelect={(date) =>
-                        setDateRange({ ...dateRange, from: date })
+          {/* Date Range Selector - Show for all periods */}
+          <>
+            <div className="h-4 w-px bg-border mx-1" />
+            <Popover
+              open={showDateRangePicker}
+              onOpenChange={setShowDateRangePicker}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-7 text-xs px-3 gap-2 hover:bg-primary/10 rounded-lg",
+                    !dateRange.from && !dateRange.to && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="h-3 w-3" />
+                  {timePeriod === "daily" ? (
+                    dateRange.from ? (
+                      format(dateRange.from, "MMM dd, yyyy")
+                    ) : (
+                      "Select date"
+                    )
+                  ) : dateRange.from && dateRange.to ? (
+                    <>
+                      {format(dateRange.from, "MMM dd")} -{" "}
+                      {format(dateRange.to, "MMM dd")}
+                    </>
+                  ) : (
+                    "Select date range"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto p-0 z-50 glass-card"
+                align="start"
+              >
+                {timePeriod === "daily" ? (
+                  <Calendar
+                    mode="single"
+                    defaultMonth={dateRange.from}
+                    selected={dateRange.from}
+                    onSelect={(selectedDate) => {
+                      if (selectedDate) {
+                        setDateRange({
+                          from: selectedDate,
+                          to: selectedDate,
+                        });
+                        setShowDateRangePicker(false);
+                      } else {
+                        setDateRange({ from: undefined, to: undefined });
                       }
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
-                    >
-                      <CalendarIcon className="h-3 w-3" />
-                      {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0 z-50 glass-card"
-                    align="start"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.to}
-                      onSelect={(date) =>
-                        setDateRange({ ...dateRange, to: date })
+                    }}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      // Disable today and future dates
+                      return date >= today;
+                    }}
+                    numberOfMonths={1}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                ) : (
+                  <Calendar
+                    mode="range"
+                    defaultMonth={dateRange.from}
+                    selected={dateRange as DateRange}
+                    onSelect={(range) => {
+                      if (range) {
+                        setDateRange({
+                          from: range.from,
+                          to: range.to,
+                        });
+                        // Close popover when both dates are selected
+                        if (range.from && range.to) {
+                          setShowDateRangePicker(false);
+                        }
+                      } else {
+                        setDateRange({ from: undefined, to: undefined });
                       }
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </>
-          )}
+                    }}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      // Disable today and future dates
+                      return date >= today;
+                    }}
+                    numberOfMonths={2}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                )}
+              </PopoverContent>
+            </Popover>
+            {(dateRange.from || dateRange.to) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2"
+                onClick={() => {
+                  const today = new Date();
+                  const yesterday = subDays(today, 1);
+
+                  if (timePeriod === "daily") {
+                    // For daily, reset to yesterday
+                    setDateRange({ from: yesterday, to: yesterday });
+                  } else if (timePeriod === "weekly") {
+                    // For weekly, reset to current week
+                    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+                    const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+                    setDateRange({ from: weekStart, to: weekEnd });
+                  } else if (timePeriod === "monthly") {
+                    // For monthly, reset to current month
+                    const monthStart = startOfMonth(today);
+                    const monthEnd = endOfMonth(today);
+                    setDateRange({ from: monthStart, to: monthEnd });
+                  }
+                  setShowDateRangePicker(false);
+                }}
+              >
+                Reset
+              </Button>
+            )}
+          </>
         </div>
 
-        {/* Modern Charts & Data - Only for Daily/Yearly */}
+        {/* Modern Charts & Data */}
         {isLoading ? (
           <div className="glass-card rounded-2xl p-8">
             <div className="flex flex-col items-center justify-center gap-4">

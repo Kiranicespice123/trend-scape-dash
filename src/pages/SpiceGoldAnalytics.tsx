@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -13,8 +13,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subDays,
+} from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 import {
   BarChart,
   Bar,
@@ -218,31 +226,70 @@ const SpiceGoldAnalytics = () => {
   const [showDetailedSummary, setShowDetailedSummary] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Set default date range - start from 7 days ago, end today
-  const getDefaultDateRange = () => {
-    const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    return {
-      from: sevenDaysAgo,
-      to: today,
-    };
-  };
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
 
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>(
-    getDefaultDateRange()
-  );
+  // Set default date range when time period changes
+  useEffect(() => {
+    const today = new Date();
+    const yesterday = subDays(today, 1);
+
+    if (timePeriod === "daily") {
+      // Set to yesterday (both from and to)
+      setDateRange({ from: yesterday, to: yesterday });
+    } else if (timePeriod === "weekly") {
+      // Set to start and end of current week
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday as start of week
+      const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+      setDateRange({ from: weekStart, to: weekEnd });
+    } else if (timePeriod === "monthly") {
+      // Set to start and end of current month
+      const monthStart = startOfMonth(today);
+      const monthEnd = endOfMonth(today);
+      setDateRange({ from: monthStart, to: monthEnd });
+    } else {
+      // For overall, reset to undefined
+      setDateRange({ from: undefined, to: undefined });
+    }
+    setShowDateRangePicker(false);
+  }, [timePeriod]);
+
+  // For daily, weekly and monthly, always use date range (default or selected)
+  // For overall, only use if manually selected
+  const dateRangeForApi = React.useMemo(() => {
+    if (
+      timePeriod === "daily" ||
+      timePeriod === "weekly" ||
+      timePeriod === "monthly"
+    ) {
+      // Always send date range for daily, weekly and monthly
+      return dateRange.from && dateRange.to ? dateRange : undefined;
+    } else {
+      // For overall, only send if manually selected
+      return dateRange.from && dateRange.to ? dateRange : undefined;
+    }
+  }, [timePeriod, dateRange]);
 
   const { data: analyticsData, isLoading: isLoadingAnalytics } =
-    useSpiceGoldAnalytics(timePeriod);
+    useSpiceGoldAnalytics(timePeriod, dateRangeForApi);
   const { data: topEarnersData, isLoading: isLoadingEarners } = useTopEarners();
 
   const isLoading = isLoadingAnalytics || isLoadingEarners;
 
   // Transform data for charts with enhanced bracket labels
+  // For "overall" period, show all brackets even with 0 users
   const chartData =
     analyticsData?.data?.ranges
-      ?.filter((item) => item && item.total_users > 0) // Filter out empty ranges
+      ?.filter((item) => {
+        if (!item) return false;
+        // For overall period, show all brackets
+        if (timePeriod === "overall") return true;
+        // For other periods, filter out empty ranges
+        return item.total_users > 0;
+      })
       .map((item, index) => {
         const fromRange = parseInt(item.reward_from_range) || 0;
         const toRange =
@@ -442,62 +489,137 @@ const SpiceGoldAnalytics = () => {
               timePeriod === "monthly") && (
               <>
                 <div className="h-4 w-px bg-border mx-1" />
-                <div className="flex gap-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
-                      >
-                        <CalendarIcon className="h-3 w-3" />
-                        {dateRange.from
-                          ? format(dateRange.from, "MM/dd")
-                          : "From"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-50 glass-card"
-                      align="start"
+                <Popover
+                  open={showDateRangePicker}
+                  onOpenChange={setShowDateRangePicker}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 text-xs px-3 gap-2 hover:bg-primary/10 rounded-lg",
+                        !dateRange.from &&
+                          !dateRange.to &&
+                          "text-muted-foreground"
+                      )}
                     >
+                      <CalendarIcon className="h-3 w-3" />
+                      {timePeriod === "daily" ? (
+                        dateRange.from ? (
+                          format(dateRange.from, "MMM dd, yyyy")
+                        ) : (
+                          "Select date"
+                        )
+                      ) : dateRange.from && dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "MMM dd")} -{" "}
+                          {format(dateRange.to, "MMM dd")}
+                        </>
+                      ) : (
+                        "Select date range"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 z-50 glass-card"
+                    align="start"
+                  >
+                    {timePeriod === "daily" ? (
                       <Calendar
                         mode="single"
+                        defaultMonth={dateRange.from}
                         selected={dateRange.from}
-                        onSelect={(date) =>
-                          setDateRange({ ...dateRange, from: date })
-                        }
+                        onSelect={(selectedDate) => {
+                          if (selectedDate) {
+                            setDateRange({
+                              from: selectedDate,
+                              to: selectedDate,
+                            });
+                            setShowDateRangePicker(false);
+                          } else {
+                            setDateRange({ from: undefined, to: undefined });
+                          }
+                        }}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          // Disable today and future dates
+                          return date >= today;
+                        }}
+                        numberOfMonths={1}
                         initialFocus
                         className="pointer-events-auto"
                       />
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
-                      >
-                        <CalendarIcon className="h-3 w-3" />
-                        {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-50 glass-card"
-                      align="start"
-                    >
+                    ) : (
                       <Calendar
-                        mode="single"
-                        selected={dateRange.to}
-                        onSelect={(date) =>
-                          setDateRange({ ...dateRange, to: date })
-                        }
+                        mode="range"
+                        defaultMonth={dateRange.from}
+                        selected={dateRange as DateRange}
+                        onSelect={(range) => {
+                          if (range) {
+                            setDateRange({
+                              from: range.from,
+                              to: range.to,
+                            });
+                            // Close popover when both dates are selected
+                            if (range.from && range.to) {
+                              setShowDateRangePicker(false);
+                            }
+                          } else {
+                            setDateRange({ from: undefined, to: undefined });
+                          }
+                        }}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          // Disable today and future dates
+                          return date >= today;
+                        }}
+                        numberOfMonths={2}
                         initialFocus
                         className="pointer-events-auto"
                       />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                {(dateRange.from || dateRange.to) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => {
+                      if (timePeriod === "daily") {
+                        // For daily, reset to yesterday
+                        const today = new Date();
+                        const yesterday = subDays(today, 1);
+                        setDateRange({ from: yesterday, to: yesterday });
+                      } else {
+                        // For weekly and monthly, reset to default ranges
+                        const today = new Date();
+                        if (timePeriod === "weekly") {
+                          const weekStart = startOfWeek(today, {
+                            weekStartsOn: 1,
+                          });
+                          const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+                          setDateRange({ from: weekStart, to: weekEnd });
+                        } else if (timePeriod === "monthly") {
+                          const monthStart = startOfMonth(today);
+                          const monthEnd = endOfMonth(today);
+                          setDateRange({ from: monthStart, to: monthEnd });
+                        }
+                      }
+                      setShowDateRangePicker(false);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
+                {timePeriod === "daily" && (
+                  <p className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">
+                    Note: Data collection is done every day at midnight
+                  </p>
+                )}
               </>
             )}
             {/* Show period label */}

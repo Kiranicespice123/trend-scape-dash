@@ -28,20 +28,33 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  Cell,
 } from "recharts";
+
+type BharatPassFilter = "all" | "withBharatPass" | "withoutBharatPass";
 
 const TopPlayers = () => {
   const { toast } = useToast();
+  const [bharatPassFilter, setBharatPassFilter] =
+    useState<BharatPassFilter>("all");
   const { data: topEarnersData, isLoading, isError } = useTopEarners();
 
   // Get top 100 earners
-  const topEarners = React.useMemo(
-    () => topEarnersData?.data?.slice(0, 100) || [],
-    [topEarnersData?.data]
-  );
+  const allTopEarners = React.useMemo(() => {
+    return topEarnersData?.data?.slice(0, 100) || [];
+  }, [topEarnersData?.data]);
 
-  // Calculate comprehensive analytics
+  // Filter earners based on Bharat Pass filter
+  const topEarners = React.useMemo(() => {
+    if (bharatPassFilter === "all") {
+      return allTopEarners;
+    } else if (bharatPassFilter === "withBharatPass") {
+      return allTopEarners.filter((earner) => earner.hasBharatPass === "Y");
+    } else {
+      return allTopEarners.filter((earner) => earner.hasBharatPass !== "Y");
+    }
+  }, [allTopEarners, bharatPassFilter]);
+
+  // Calculate analytics
   const analytics = React.useMemo(() => {
     if (topEarners.length === 0) return null;
 
@@ -53,37 +66,14 @@ const TopPlayers = () => {
     const maxSG = Math.max(...topEarners.map((e) => e.totalRewardPoints));
     const minSG = Math.min(...topEarners.map((e) => e.totalRewardPoints));
 
-    // Calculate median
-    const sortedSG = [...topEarners]
-      .map((e) => e.totalRewardPoints)
-      .sort((a, b) => b - a);
-    const medianSG =
-      sortedSG.length % 2 === 0
-        ? (sortedSG[sortedSG.length / 2 - 1] + sortedSG[sortedSG.length / 2]) /
-          2
-        : sortedSG[Math.floor(sortedSG.length / 2)];
-
-    // Top 10% earners
-    const top10Percent = Math.ceil(topEarners.length * 0.1);
-    const top10PercentSG = topEarners
-      .slice(0, top10Percent)
-      .reduce((sum, e) => sum + e.totalRewardPoints, 0);
-    const top10PercentAverage = top10PercentSG / top10Percent;
-
-    // Distribution by ranges (using SpiceGold framework ranges)
+    // Distribution by ranges
     const ranges = [
-      { label: "0-50", min: 0, max: 50, color: "#ef4444" },
-      { label: "51-100", min: 51, max: 100, color: "#c026d3" },
-      { label: "101-400", min: 101, max: 400, color: "#2563eb" },
-      { label: "401-700", min: 401, max: 700, color: "#facc15" },
-      { label: "701-1000", min: 701, max: 1000, color: "#16a34a" },
-      { label: "1001-4000", min: 1001, max: 4000, color: "#0284c7" },
-      { label: "4001-7000", min: 4001, max: 7000, color: "#f97316" },
-      { label: "7001-15000", min: 7001, max: 15000, color: "#7e22ce" },
-      { label: "15001-23000", min: 15001, max: 23000, color: "#78350f" },
-      { label: "23001-31000", min: 23001, max: 31000, color: "#f59e0b" },
-      { label: "31001-62000", min: 31001, max: 62000, color: "#06b6d4" },
-      { label: "62001+", min: 62001, max: Infinity, color: "#4f46e5" },
+      { label: "0-1000", min: 0, max: 1000 },
+      { label: "1001-5000", min: 1001, max: 5000 },
+      { label: "5001-10000", min: 5001, max: 10000 },
+      { label: "10001-25000", min: 10001, max: 25000 },
+      { label: "25001-50000", min: 25001, max: 50000 },
+      { label: "50001+", min: 50001, max: Infinity },
     ];
 
     const distribution = ranges.map((range) => ({
@@ -92,20 +82,13 @@ const TopPlayers = () => {
         (e) =>
           e.totalRewardPoints >= range.min && e.totalRewardPoints <= range.max
       ).length,
-      percentage:
-        (topEarners.filter(
-          (e) =>
-            e.totalRewardPoints >= range.min && e.totalRewardPoints <= range.max
-        ).length /
-          topEarners.length) *
-        100,
     }));
 
     // Top 10 for detailed view
     const top10 = topEarners.slice(0, 10);
 
-    // Chart data for top 50 for better visualization
-    const chartData = topEarners.slice(0, 50).map((earner) => ({
+    // Chart data for top 20
+    const chartData = topEarners.slice(0, 20).map((earner) => ({
       rank: earner.rank,
       name: earner.firstName
         ? `${earner.firstName} ${earner.lastName || ""}`.trim()
@@ -114,19 +97,11 @@ const TopPlayers = () => {
       linkedId: earner.linkedId,
     }));
 
-    // Percentiles
-    const percentile25 = sortedSG[Math.floor(sortedSG.length * 0.25)];
-    const percentile75 = sortedSG[Math.floor(sortedSG.length * 0.75)];
-
     return {
       totalSG,
       averageSG,
-      medianSG,
       maxSG,
       minSG,
-      top10PercentAverage,
-      percentile25,
-      percentile75,
       distribution,
       top10,
       chartData,
@@ -142,6 +117,8 @@ const TopPlayers = () => {
       "Developer ID",
       "First Name",
       "Last Name",
+      "Bharat Pass",
+      "Total Event Count",
       "Total Reward Points (SG)",
     ];
     const rows = topEarners.map((earner) => [
@@ -150,6 +127,8 @@ const TopPlayers = () => {
       earner.developerId,
       earner.firstName || "",
       earner.lastName || "",
+      earner.hasBharatPass || "",
+      earner.totalEventCount || "",
       earner.totalRewardPoints,
     ]);
 
@@ -224,9 +203,9 @@ const TopPlayers = () => {
             </Button>
           </div>
 
-          {/* Enhanced Analytics Cards */}
+          {/* Analytics Cards */}
           {analytics && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
               <div className="text-center p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:scale-105 transition-transform duration-300">
                 <div className="text-xs text-muted-foreground mb-1">
                   Total Players
@@ -259,22 +238,6 @@ const TopPlayers = () => {
                   {analytics.maxSG.toLocaleString()}
                 </div>
               </div>
-              <div className="text-center p-2 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 hover:scale-105 transition-transform duration-300">
-                <div className="text-xs text-muted-foreground mb-1">
-                  Median SG
-                </div>
-                <div className="text-2xl md:text-3xl font-bold text-cyan-500">
-                  {Math.round(analytics.medianSG).toLocaleString()}
-                </div>
-              </div>
-              <div className="text-center p-2 rounded-xl bg-gradient-to-br from-pink-500/10 to-pink-500/5 border border-pink-500/20 hover:scale-105 transition-transform duration-300">
-                <div className="text-xs text-muted-foreground mb-1">
-                  Top 10% Avg SG
-                </div>
-                <div className="text-2xl md:text-3xl font-bold text-pink-500">
-                  {Math.round(analytics.top10PercentAverage).toLocaleString()}
-                </div>
-              </div>
             </div>
           )}
         </div>
@@ -282,16 +245,13 @@ const TopPlayers = () => {
         {/* Charts */}
         {analytics && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* Top 50 Bar Chart */}
+            {/* Top 20 Bar Chart */}
             <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
               <h3 className="text-sm font-semibold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Top 50 Players - SG Distribution
+                Top 20 Players - SG Distribution
               </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart
-                  data={analytics.chartData}
-                  margin={{ top: 10, right: 10, bottom: 40, left: 10 }}
-                >
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.chartData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="hsl(var(--border))"
@@ -300,7 +260,7 @@ const TopPlayers = () => {
                   <XAxis
                     dataKey="rank"
                     tick={{
-                      fontSize: 9,
+                      fontSize: 10,
                       fill: "hsl(var(--muted-foreground))",
                     }}
                     label={{
@@ -328,21 +288,12 @@ const TopPlayers = () => {
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
-                      zIndex: 1000,
                     }}
-                    wrapperStyle={{ zIndex: 1000 }}
-                    formatter={(
-                      value: number,
-                      name: string,
-                      props: { payload?: { rank?: number; name?: string } }
-                    ) => [
+                    formatter={(value: number) => [
                       `${value.toLocaleString()} SG`,
-                      `Rank ${props.payload?.rank || ""}`,
+                      "Total Points",
                     ]}
-                    labelFormatter={(label, payload) => {
-                      const data = payload?.[0]?.payload;
-                      return data?.name || label;
-                    }}
+                    labelFormatter={(label) => `Rank: ${label}`}
                   />
                   <Bar
                     dataKey="sg"
@@ -358,11 +309,8 @@ const TopPlayers = () => {
               <h3 className="text-sm font-semibold mb-3 bg-gradient-to-r from-secondary to-info bg-clip-text text-transparent">
                 SG Range Distribution
               </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart
-                  data={analytics.distribution}
-                  margin={{ top: 10, right: 10, bottom: 80, left: 10 }}
-                >
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.distribution}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="hsl(var(--border))"
@@ -395,25 +343,14 @@ const TopPlayers = () => {
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
-                      zIndex: 1000,
                     }}
-                    wrapperStyle={{ zIndex: 1000 }}
-                    formatter={(
-                      value: number,
-                      name: string,
-                      props: { payload?: { percentage?: number } }
-                    ) => [
-                      `${value} players (${
-                        props.payload?.percentage?.toFixed(1) || 0
-                      }%)`,
-                      "Count",
-                    ]}
+                    formatter={(value: number) => [`${value} players`, "Count"]}
                   />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {analytics.distribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
+                  <Bar
+                    dataKey="count"
+                    fill="hsl(var(--secondary))"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -422,14 +359,51 @@ const TopPlayers = () => {
 
         {/* Top Players Table */}
         <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div>
               <h3 className="text-sm font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Top 100 Players Leaderboard
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Complete list of top SpiceGold earners
+                {bharatPassFilter === "all"
+                  ? "Complete list of top SpiceGold earners"
+                  : bharatPassFilter === "withBharatPass"
+                  ? `Players with Bharat Pass (${topEarners.length})`
+                  : `Players without Bharat Pass (${topEarners.length})`}
               </p>
+            </div>
+            {/* Filter Buttons */}
+            <div className="flex gap-1">
+              <Button
+                variant={bharatPassFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setBharatPassFilter("all")}
+                className="h-7 text-xs px-3"
+              >
+                All Players
+              </Button>
+              <Button
+                variant={
+                  bharatPassFilter === "withBharatPass" ? "default" : "outline"
+                }
+                size="sm"
+                onClick={() => setBharatPassFilter("withBharatPass")}
+                className="h-7 text-xs px-3"
+              >
+                With Bharat Pass
+              </Button>
+              <Button
+                variant={
+                  bharatPassFilter === "withoutBharatPass"
+                    ? "default"
+                    : "outline"
+                }
+                size="sm"
+                onClick={() => setBharatPassFilter("withoutBharatPass")}
+                className="h-7 text-xs px-3"
+              >
+                Without Bharat Pass
+              </Button>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -444,6 +418,12 @@ const TopPlayers = () => {
                     Developer ID
                   </th>
                   <th className="text-left py-2 px-3 font-medium">Name</th>
+                  <th className="text-center py-2 px-3 font-medium">
+                    Bharat Pass
+                  </th>
+                  <th className="text-right py-2 px-3 font-medium">
+                    Total Events
+                  </th>
                   <th className="text-right py-2 px-3 font-medium">Total SG</th>
                 </tr>
               </thead>
@@ -477,6 +457,20 @@ const TopPlayers = () => {
                       {earner.firstName
                         ? `${earner.firstName} ${earner.lastName || ""}`.trim()
                         : `User ${earner.linkedId}`}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      {earner.hasBharatPass === "Y" ? (
+                        <img
+                          src="https://appcdn.goqii.com/storeimg/54957_1762418839.png"
+                          alt="Bharat Pass"
+                          className="h-5 w-5 mx-auto object-contain"
+                        />
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      {earner.totalEventCount?.toLocaleString() || "-"}
                     </td>
                     <td className="py-2 px-3 text-right font-semibold">
                       {earner.totalRewardPoints.toLocaleString()} SG

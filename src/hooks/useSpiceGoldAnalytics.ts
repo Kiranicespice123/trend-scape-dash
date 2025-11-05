@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 type TimePeriod = "daily" | "weekly" | "monthly" | "overall";
 
@@ -59,6 +60,8 @@ interface TopEarner {
   rank: number;
   linkedId: number;
   totalRewardPoints: number;
+  totalEventCount?: number;
+  hasBharatPass?: string;
   developerId: string;
   firstName?: string;
   lastName?: string;
@@ -78,40 +81,56 @@ export interface NormalizedSpiceGoldData {
   message: string;
 }
 
-export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
+export const useSpiceGoldAnalytics = (
+  timePeriod: TimePeriod,
+  dateRange?: { from?: Date; to?: Date }
+) => {
   return useQuery<NormalizedSpiceGoldData>({
-    queryKey: ["spicegold-analytics", timePeriod],
+    queryKey: ["spicegold-analytics", timePeriod, dateRange],
     enabled: true,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     queryFn: async () => {
-      let url: string;
+      let url: URL;
 
-      switch (timePeriod) {
-        case "daily":
-          url =
-            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily?range=D";
-          break;
-        case "weekly":
-          url =
-            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily?range=W";
-          break;
-        case "monthly":
-          url =
-            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily?range=M";
-          break;
-        case "overall":
-          url =
-            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_till_date";
-          break;
-        default:
-          url =
-            "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_till_date";
+      // If date range is provided, always send from and to (no range parameter)
+      if (dateRange?.from && dateRange?.to) {
+        url = new URL(
+          "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily"
+        );
+        url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
+        url.searchParams.append("to", format(dateRange.to, "yyyy-MM-dd"));
+      } else {
+        // If no date range, use the time period range parameter (only for daily and overall)
+        switch (timePeriod) {
+          case "daily":
+            url = new URL(
+              "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily"
+            );
+            url.searchParams.append("range", "D");
+            break;
+          case "overall":
+            url = new URL(
+              "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_till_date"
+            );
+            break;
+          default:
+            // Weekly and monthly should always have date range, but fallback to range if not provided
+            url = new URL(
+              "https://gamestaging.icespice.com/store_store/reward_points_range_analytics_daily"
+            );
+            if (timePeriod === "weekly") {
+              url.searchParams.append("range", "W");
+            } else if (timePeriod === "monthly") {
+              url.searchParams.append("range", "M");
+            }
+            break;
+        }
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url.toString());
 
       if (!response.ok) {
         throw new Error("Failed to fetch SpiceGold analytics data");
@@ -334,13 +353,24 @@ export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
   });
 };
 
-export const useTopEarners = () => {
+export const useTopEarners = (dateRange?: { from?: Date; to?: Date }) => {
   return useQuery<{ code: number; data: TopEarner[]; message: string }>({
-    queryKey: ["top-earners"],
+    queryKey: ["top-earners", dateRange],
     queryFn: async () => {
-      const response = await fetch(
+      const url = new URL(
         "https://gamestaging.icespice.com/store_store/top_reward_points_earners"
       );
+
+      // Add date range parameters if provided
+      if (dateRange?.from) {
+        url.searchParams.append("from", format(dateRange.from, "yyyy-MM-dd"));
+      }
+
+      if (dateRange?.to) {
+        url.searchParams.append("to", format(dateRange.to, "yyyy-MM-dd"));
+      }
+
+      const response = await fetch(url.toString());
 
       if (!response.ok) {
         throw new Error("Failed to fetch top earners");
