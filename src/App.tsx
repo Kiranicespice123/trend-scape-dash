@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 import SpiceGoldAnalytics from "./pages/SpiceGoldAnalytics";
+import TopPlayers from "./pages/TopPlayers";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
                   path="/spicegold_analytics"
                   element={<SpiceGoldAnalytics />}
                 />
+                <Route path="/top_players" element={<TopPlayers />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

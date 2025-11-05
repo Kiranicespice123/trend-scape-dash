@@ -7,6 +7,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -19,6 +27,9 @@ import {
   Cell,
   PieChart,
   Pie,
+  LineChart,
+  Line,
+  Brush,
 } from "recharts";
 import {
   useSpiceGoldAnalytics,
@@ -205,6 +216,23 @@ const SpiceGoldAnalytics = () => {
   const { toast } = useToast();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("overall");
   const [showDetailedSummary, setShowDetailedSummary] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Set default date range - start from 7 days ago, end today
+  const getDefaultDateRange = () => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    return {
+      from: sevenDaysAgo,
+      to: today,
+    };
+  };
+
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>(
+    getDefaultDateRange()
+  );
+
   const { data: analyticsData, isLoading: isLoadingAnalytics } =
     useSpiceGoldAnalytics(timePeriod);
   const { data: topEarnersData, isLoading: isLoadingEarners } = useTopEarners();
@@ -408,6 +436,70 @@ const SpiceGoldAnalytics = () => {
                 )
               )}
             </div>
+            {/* Date Range Selector - Only show for daily/weekly/monthly */}
+            {(timePeriod === "daily" ||
+              timePeriod === "weekly" ||
+              timePeriod === "monthly") && (
+              <>
+                <div className="h-4 w-px bg-border mx-1" />
+                <div className="flex gap-1">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
+                      >
+                        <CalendarIcon className="h-3 w-3" />
+                        {dateRange.from
+                          ? format(dateRange.from, "MM/dd")
+                          : "From"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 z-50 glass-card"
+                      align="start"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={dateRange.from}
+                        onSelect={(date) =>
+                          setDateRange({ ...dateRange, from: date })
+                        }
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2 gap-1 hover:bg-primary/10 rounded-lg"
+                      >
+                        <CalendarIcon className="h-3 w-3" />
+                        {dateRange.to ? format(dateRange.to, "MM/dd") : "To"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 z-50 glass-card"
+                      align="start"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={dateRange.to}
+                        onSelect={(date) =>
+                          setDateRange({ ...dateRange, to: date })
+                        }
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </>
+            )}
             {/* Show period label */}
             {!isLoading && analyticsData && (
               <div className="ml-auto text-xs text-muted-foreground">
@@ -421,38 +513,42 @@ const SpiceGoldAnalytics = () => {
                 Total Users
               </div>
               <div className="text-2xl md:text-3xl font-bold text-orange-500">
-                {totalUsers.toLocaleString()}
+                {(
+                  analyticsData?.data?.unique_users ?? totalUsers
+                ).toLocaleString()}
               </div>
             </div>
 
-            {/* <div className="text-center p-2 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20 hover:scale-105 transition-transform duration-300">
-              <div className="text-xs text-muted-foreground mb-1">
-                Total SG (Est.)
-              </div>
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">Total SG</div>
               <div className="text-2xl md:text-3xl font-bold text-success">
-                {Math.round(estimatedTotalSG).toLocaleString()}
+                {analyticsData?.data?.totalSg
+                  ? Math.round(analyticsData.data.totalSg).toLocaleString()
+                  : Math.round(estimatedTotalSG).toLocaleString()}
               </div>
-            </div> */}
+            </div>
 
-            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-info/10 to-info/5 border border-info/20 hover:scale-105 transition-transform duration-300">
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">
+                Average SG
+              </div>
+              <div className="text-2xl md:text-3xl font-bold text-purple-500">
+                {analyticsData?.data?.averageSg
+                  ? analyticsData.data.averageSg.toFixed(2)
+                  : totalUsers > 0
+                  ? Math.round(estimatedTotalSG / totalUsers).toLocaleString()
+                  : 0}
+              </div>
+            </div>
+
+            {/* <div className="text-center p-2 rounded-xl bg-gradient-to-br from-info/10 to-info/5 border border-info/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">
                 Total SpiceGold Earned by Top 10 Users
               </div>
               <div className="text-2xl md:text-3xl font-bold text-info">
                 {topEarnersTotal.toLocaleString()}
               </div>
-            </div>
-
-            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 hover:scale-105 transition-transform duration-300">
-              <div className="text-xs text-muted-foreground mb-1">
-                Avg per User
-              </div>
-              <div className="text-2xl md:text-3xl font-bold text-purple-500">
-                {totalUsers > 0
-                  ? Math.round(estimatedTotalSG / totalUsers).toLocaleString()
-                  : 0}
-              </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Earning Bracket Metrics - Framework-based */}
@@ -538,7 +634,7 @@ const SpiceGoldAnalytics = () => {
             <div className="grid gap-3 lg:grid-cols-3">
               {/* Main Distribution Chart - Enhanced Pie Chart */}
               {chartData.length > 0 && (
-                <div className="glass-card rounded-2xl p-3 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 lg:col-span-2">
+                <div className="glass-card rounded-2xl p-3 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 lg:col-span-4">
                   <div className="flex items-center justify-between">
                     {" "}
                     <h3 className="text-sm font-semibold mb-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -785,7 +881,7 @@ const SpiceGoldAnalytics = () => {
               )}
 
               {/* Compact Top Earners */}
-              {topEarners.length > 0 && (
+              {/* {topEarners.length > 0 && (
                 <div className="glass-card rounded-2xl p-3 hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500">
                   <h3 className="text-sm font-semibold mb-1 bg-gradient-to-r from-secondary to-info bg-clip-text text-transparent flex items-center gap-2">
                     <Award className="h-4 w-4" />
@@ -832,13 +928,308 @@ const SpiceGoldAnalytics = () => {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
+              {/* Daily Trends - Single Unified Chart */}
+              {(timePeriod === "daily" ||
+                timePeriod === "weekly" ||
+                timePeriod === "monthly") &&
+                analyticsData?.data?.weeklyBreakdown && (
+                  <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500 lg:col-span-3">
+                    <div className="mb-3">
+                      <h3 className="text-sm font-semibold bg-gradient-to-r from-secondary to-info bg-clip-text text-transparent">
+                        {timePeriod === "daily"
+                          ? "Daily"
+                          : timePeriod === "weekly"
+                          ? "Weekly"
+                          : "Monthly"}{" "}
+                        Trends
+                      </h3>
+                      {(() => {
+                        // Filter dates with data to show accurate date range
+                        const datesWithData =
+                          analyticsData.data.weeklyBreakdown.filter(
+                            (dateData) => {
+                              const totalDayUsers = dateData.ranges.reduce(
+                                (sum, r) => sum + r.total_users,
+                                0
+                              );
+                              return totalDayUsers > 0;
+                            }
+                          );
+                        return datesWithData.length > 0 ? (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {datesWithData[0]?.date} -{" "}
+                            {datesWithData[datesWithData.length - 1]?.date}
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                    {(() => {
+                      // Filter dates with data and within selected date range
+                      const datesWithData =
+                        analyticsData.data.weeklyBreakdown.filter(
+                          (dateData) => {
+                            const totalDayUsers = dateData.ranges.reduce(
+                              (sum, r) => sum + r.total_users,
+                              0
+                            );
+                            if (totalDayUsers === 0) return false;
+
+                            // Filter by date range if set
+                            if (dateRange.from || dateRange.to) {
+                              const date = new Date(dateData.date);
+                              if (dateRange.from && date < dateRange.from)
+                                return false;
+                              if (dateRange.to) {
+                                const toDate = new Date(dateRange.to);
+                                toDate.setHours(23, 59, 59, 999); // Include the entire end date
+                                if (date > toDate) return false;
+                              }
+                            }
+
+                            return true;
+                          }
+                        );
+
+                      if (datesWithData.length === 0) return null;
+
+                      // Get all unique ranges that have data
+                      const allRanges =
+                        datesWithData[0]?.ranges?.filter((r) => {
+                          return datesWithData.some(
+                            (day) =>
+                              day.ranges.find(
+                                (r2) =>
+                                  r2.reward_from_range ===
+                                    r.reward_from_range &&
+                                  r2.reward_to_range === r.reward_to_range
+                              )?.total_users > 0
+                          );
+                        }) || [];
+
+                      // Transform data - dates on X-axis, ranges on Y-axis
+                      // Each date becomes a data point, with ranges as columns
+                      const chartData = datesWithData.map((dateData) => {
+                        const dataPoint: Record<string, string | number> = {
+                          date: dateData.date,
+                          dateLabel: (() => {
+                            const date = new Date(dateData.date);
+                            return `${String(date.getMonth() + 1).padStart(
+                              2,
+                              "0"
+                            )}-${String(date.getDate()).padStart(2, "0")}`;
+                          })(),
+                        };
+
+                        // Add user count for each range
+                        allRanges.forEach((baseRange) => {
+                          const matchingRange = dateData.ranges.find(
+                            (r) =>
+                              r.reward_from_range ===
+                                baseRange.reward_from_range &&
+                              r.reward_to_range === baseRange.reward_to_range
+                          );
+                          const fromRange =
+                            parseInt(baseRange.reward_from_range) || 0;
+                          const toRange =
+                            baseRange.reward_to_range &&
+                            baseRange.reward_to_range.trim()
+                              ? parseInt(baseRange.reward_to_range)
+                              : null;
+                          const rangeName = toRange
+                            ? `${fromRange}-${toRange}`
+                            : `${fromRange}+`;
+                          const userCount = matchingRange?.total_users || 0;
+                          dataPoint[rangeName] = userCount;
+                        });
+
+                        return dataPoint;
+                      });
+
+                      // Sort ranges for display (from lowest to highest)
+                      const sortedRanges = [...allRanges].sort((a, b) => {
+                        const aFrom = parseInt(a.reward_from_range) || 0;
+                        const bFrom = parseInt(b.reward_from_range) || 0;
+                        return aFrom - bFrom;
+                      });
+
+                      return (
+                        <div className="relative w-full">
+                          {/* Zoom Controls */}
+                          <div className="absolute top-2 right-2 z-10 flex gap-1 bg-card/90 backdrop-blur-sm rounded-lg p-1 border border-border shadow-lg">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() =>
+                                setZoomLevel(Math.max(0.5, zoomLevel - 0.1))
+                              }
+                              title="Zoom Out"
+                            >
+                              <span className="text-xs font-bold">-</span>
+                            </Button>
+                            <div className="px-2 py-1 text-xs text-muted-foreground min-w-[60px] text-center font-medium">
+                              {Math.round(zoomLevel * 100)}%
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() =>
+                                setZoomLevel(Math.min(3, zoomLevel + 0.1))
+                              }
+                              title="Zoom In"
+                            >
+                              <span className="text-xs font-bold">+</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                setZoomLevel(1);
+                              }}
+                              title="Reset View"
+                            >
+                              Reset
+                            </Button>
+                          </div>
+                          <div
+                            className="overflow-auto"
+                            style={{
+                              transform: `scale(${zoomLevel})`,
+                              transformOrigin: "top left",
+                              transition: "transform 0.2s",
+                              height: "500px",
+                            }}
+                          >
+                            <ResponsiveContainer width="100%" height={500}>
+                              <BarChart
+                                data={chartData}
+                                margin={{
+                                  top: 10,
+                                  right: 10,
+                                  bottom: 80,
+                                  left: 60,
+                                }}
+                              >
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="hsl(var(--border))"
+                                  opacity={0.3}
+                                />
+                                <XAxis
+                                  type="category"
+                                  dataKey="dateLabel"
+                                  tick={{
+                                    fontSize: 11,
+                                    fill: "hsl(var(--foreground))",
+                                    fontWeight: 500,
+                                  }}
+                                  angle={-45}
+                                  textAnchor="end"
+                                  height={80}
+                                  label={{
+                                    value: "Dates",
+                                    position: "insideBottom",
+                                    offset: -5,
+                                    style: {
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                    },
+                                  }}
+                                />
+                                <YAxis
+                                  type="number"
+                                  tick={{
+                                    fontSize: 11,
+                                    fill: "hsl(var(--foreground))",
+                                    fontWeight: 500,
+                                  }}
+                                  tickFormatter={(value) =>
+                                    value.toLocaleString()
+                                  }
+                                  label={{
+                                    value: "Number of Users",
+                                    angle: -90,
+                                    position: "insideLeft",
+                                    style: {
+                                      fontSize: "12px",
+                                      fontWeight: 600,
+                                    },
+                                  }}
+                                  domain={[0, "dataMax"]}
+                                />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "hsl(var(--card))",
+                                    border: "1px solid hsl(var(--border))",
+                                    borderRadius: "8px",
+                                    zIndex: 1000,
+                                    fontSize: "12px",
+                                  }}
+                                  wrapperStyle={{ zIndex: 1000 }}
+                                  formatter={(
+                                    value: number | string,
+                                    name: string
+                                  ) => [
+                                    `${Number(value).toLocaleString()} users`,
+                                    name,
+                                  ]}
+                                  labelFormatter={(label) => `Date: ${label}`}
+                                />
+                                <Legend
+                                  wrapperStyle={{
+                                    fontSize: "11px",
+                                    paddingTop: "10px",
+                                  }}
+                                  iconSize={10}
+                                  formatter={(value) => `${value} SG`}
+                                />
+                                {sortedRanges.map((baseRange, rangeIdx) => {
+                                  const fromRange =
+                                    parseInt(baseRange.reward_from_range) || 0;
+                                  const toRange =
+                                    baseRange.reward_to_range &&
+                                    baseRange.reward_to_range.trim()
+                                      ? parseInt(baseRange.reward_to_range)
+                                      : null;
+                                  const rangeName = toRange
+                                    ? `${fromRange}-${toRange}`
+                                    : `${fromRange}+`;
+                                  const color = getBracketColor(
+                                    fromRange,
+                                    toRange,
+                                    timePeriod
+                                  );
+                                  return (
+                                    <Bar
+                                      key={rangeIdx}
+                                      dataKey={rangeName}
+                                      fill={color}
+                                      name={`${rangeName} SG`}
+                                      radius={[4, 4, 0, 0]}
+                                    />
+                                  );
+                                })}
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground text-center">
+                            💡 Use + and - buttons to zoom in and out
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
               {/* Daily/Weekly/Monthly Daily Breakdown - Single Consolidated View */}
               {(timePeriod === "daily" ||
                 timePeriod === "weekly" ||
                 timePeriod === "monthly") &&
                 analyticsData?.data?.weeklyBreakdown && (
-                  <div className="glass-card rounded-2xl p-4 hover:s  hadow-2xl hover:shadow-secondary/10 transition-all duration-500 lg:col-span-3">
+                  <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500 lg:col-span-3">
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <h3 className="text-sm font-semibold bg-gradient-to-r from-secondary to-info bg-clip-text text-transparent">
@@ -849,16 +1240,39 @@ const SpiceGoldAnalytics = () => {
                             : "Monthly"}{" "}
                           Breakdown
                         </h3>
-                        {analyticsData.data.weeklyBreakdown.length > 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {analyticsData.data.weeklyBreakdown[0]?.date} -{" "}
-                            {
-                              analyticsData.data.weeklyBreakdown[
-                                analyticsData.data.weeklyBreakdown.length - 1
-                              ]?.date
-                            }
-                          </p>
-                        )}
+                        {(() => {
+                          // Filter dates with data and within selected date range
+                          const datesWithData =
+                            analyticsData.data.weeklyBreakdown.filter(
+                              (dateData) => {
+                                const totalDayUsers = dateData.ranges.reduce(
+                                  (sum, r) => sum + r.total_users,
+                                  0
+                                );
+                                if (totalDayUsers === 0) return false;
+
+                                // Filter by date range if set
+                                if (dateRange.from || dateRange.to) {
+                                  const date = new Date(dateData.date);
+                                  if (dateRange.from && date < dateRange.from)
+                                    return false;
+                                  if (dateRange.to) {
+                                    const toDate = new Date(dateRange.to);
+                                    toDate.setHours(23, 59, 59, 999);
+                                    if (date > toDate) return false;
+                                  }
+                                }
+
+                                return true;
+                              }
+                            );
+                          return datesWithData.length > 0 ? (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {datesWithData[0]?.date} -{" "}
+                              {datesWithData[datesWithData.length - 1]?.date}
+                            </p>
+                          ) : null;
+                        })()}
                       </div>
                       <Button
                         variant="outline"
@@ -867,20 +1281,43 @@ const SpiceGoldAnalytics = () => {
                           if (!analyticsData?.data?.weeklyBreakdown) return;
 
                           // Get all unique ranges
-                          const allRanges =
-                            analyticsData.data.weeklyBreakdown[0]?.ranges.filter(
-                              (r) => {
-                                return analyticsData.data.weeklyBreakdown.some(
-                                  (day) =>
-                                    day.ranges.find(
-                                      (r2) =>
-                                        r2.reward_from_range ===
-                                          r.reward_from_range &&
-                                        r2.reward_to_range === r.reward_to_range
-                                    )?.total_users > 0
+                          // Get all ranges from dates with data and within selected date range
+                          const datesWithData =
+                            analyticsData.data.weeklyBreakdown.filter(
+                              (dateData) => {
+                                const totalDayUsers = dateData.ranges.reduce(
+                                  (sum, r) => sum + r.total_users,
+                                  0
                                 );
+                                if (totalDayUsers === 0) return false;
+
+                                // Filter by date range if set
+                                if (dateRange.from || dateRange.to) {
+                                  const date = new Date(dateData.date);
+                                  if (dateRange.from && date < dateRange.from)
+                                    return false;
+                                  if (dateRange.to) {
+                                    const toDate = new Date(dateRange.to);
+                                    toDate.setHours(23, 59, 59, 999);
+                                    if (date > toDate) return false;
+                                  }
+                                }
+
+                                return true;
                               }
-                            ) || [];
+                            );
+                          const allRanges =
+                            datesWithData[0]?.ranges?.filter((r) => {
+                              return datesWithData.some(
+                                (day) =>
+                                  day.ranges.find(
+                                    (r2) =>
+                                      r2.reward_from_range ===
+                                        r.reward_from_range &&
+                                      r2.reward_to_range === r.reward_to_range
+                                  )?.total_users > 0
+                              );
+                            }) || [];
 
                           // Create CSV headers
                           const headers = [
@@ -899,9 +1336,16 @@ const SpiceGoldAnalytics = () => {
                             "Total Users",
                           ];
 
-                          // Create CSV rows
-                          const rows = analyticsData.data.weeklyBreakdown.map(
-                            (dateData) => {
+                          // Create CSV rows - filter out dates with no data
+                          const rows = analyticsData.data.weeklyBreakdown
+                            .filter((dateData) => {
+                              const totalDayUsers = dateData.ranges.reduce(
+                                (sum, r) => sum + r.total_users,
+                                0
+                              );
+                              return totalDayUsers > 0;
+                            })
+                            .map((dateData) => {
                               const totalDayUsers = dateData.ranges.reduce(
                                 (sum, r) => sum + r.total_users,
                                 0
@@ -923,8 +1367,7 @@ const SpiceGoldAnalytics = () => {
 
                               row.push(totalDayUsers.toString());
                               return row;
-                            }
-                          );
+                            });
 
                           // Combine headers and rows
                           const csvContent = [
@@ -940,12 +1383,22 @@ const SpiceGoldAnalytics = () => {
                           if (link.download !== undefined) {
                             const url = URL.createObjectURL(blob);
                             link.setAttribute("href", url);
+                            // Get date range from dates with data for filename
+                            const datesWithDataForFile =
+                              analyticsData.data.weeklyBreakdown.filter(
+                                (dateData) => {
+                                  const totalDayUsers = dateData.ranges.reduce(
+                                    (sum, r) => sum + r.total_users,
+                                    0
+                                  );
+                                  return totalDayUsers > 0;
+                                }
+                              );
                             const startDate =
-                              analyticsData.data.weeklyBreakdown[0]?.date ||
-                              "weekly";
+                              datesWithDataForFile[0]?.date || "weekly";
                             const endDate =
-                              analyticsData.data.weeklyBreakdown[
-                                analyticsData.data.weeklyBreakdown.length - 1
+                              datesWithDataForFile[
+                                datesWithDataForFile.length - 1
                               ]?.date || "";
                             link.setAttribute(
                               "download",
@@ -982,66 +1435,101 @@ const SpiceGoldAnalytics = () => {
                             <th className="text-left py-2 px-2 font-medium sticky left-0 bg-card z-10">
                               Date
                             </th>
-                            {analyticsData.data.weeklyBreakdown[0]?.ranges
-                              .filter((r) => {
-                                // Show ranges that have users in at least one day
-                                return analyticsData.data.weeklyBreakdown.some(
-                                  (day) =>
-                                    day.ranges.find(
-                                      (r2) =>
-                                        r2.reward_from_range ===
-                                          r.reward_from_range &&
-                                        r2.reward_to_range === r.reward_to_range
-                                    )?.total_users > 0
+                            {(() => {
+                              // Filter dates with data first
+                              const datesWithData =
+                                analyticsData.data.weeklyBreakdown.filter(
+                                  (dateData) => {
+                                    const totalDayUsers =
+                                      dateData.ranges.reduce(
+                                        (sum, r) => sum + r.total_users,
+                                        0
+                                      );
+                                    return totalDayUsers > 0;
+                                  }
                                 );
-                              })
-                              .map((range, idx) => {
-                                const fromRange =
-                                  parseInt(range.reward_from_range) || 0;
-                                const toRange =
-                                  range.reward_to_range &&
-                                  range.reward_to_range.trim()
-                                    ? parseInt(range.reward_to_range)
-                                    : null;
-                                const rangeName = toRange
-                                  ? `${fromRange}-${toRange}`
-                                  : `${fromRange}+`;
-                                const color = getBracketColor(
-                                  fromRange,
-                                  toRange,
-                                  timePeriod
-                                );
-                                return (
-                                  <th
-                                    key={idx}
-                                    className="text-center py-2 px-2 font-medium min-w-[80px]"
-                                  >
-                                    <div
-                                      className="w-2.5 h-2.5 rounded-full mx-auto mb-1"
-                                      style={{ backgroundColor: color }}
-                                    />
-                                    <div className="text-[9px]">
-                                      {rangeName} SG
-                                    </div>
-                                  </th>
-                                );
-                              })}
+                              // Then get ranges that have users in at least one day with data
+                              return (
+                                datesWithData[0]?.ranges?.filter((r) => {
+                                  return datesWithData.some(
+                                    (day) =>
+                                      day.ranges.find(
+                                        (r2) =>
+                                          r2.reward_from_range ===
+                                            r.reward_from_range &&
+                                          r2.reward_to_range ===
+                                            r.reward_to_range
+                                      )?.total_users > 0
+                                  );
+                                }) || []
+                              );
+                            })().map((range, idx) => {
+                              const fromRange =
+                                parseInt(range.reward_from_range) || 0;
+                              const toRange =
+                                range.reward_to_range &&
+                                range.reward_to_range.trim()
+                                  ? parseInt(range.reward_to_range)
+                                  : null;
+                              const rangeName = toRange
+                                ? `${fromRange}-${toRange}`
+                                : `${fromRange}+`;
+                              const color = getBracketColor(
+                                fromRange,
+                                toRange,
+                                timePeriod
+                              );
+                              return (
+                                <th
+                                  key={idx}
+                                  className="text-center py-2 px-2 font-medium min-w-[80px]"
+                                >
+                                  <div
+                                    className="w-2.5 h-2.5 rounded-full mx-auto mb-1"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  <div className="text-[9px]">
+                                    {rangeName} SG
+                                  </div>
+                                </th>
+                              );
+                            })}
                             <th className="text-right py-2 px-2 font-medium">
                               Total
                             </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {analyticsData.data.weeklyBreakdown.map(
-                            (dateData, dateIndex) => {
+                          {analyticsData.data.weeklyBreakdown
+                            .filter((dateData) => {
+                              // Filter out dates with no data (total users = 0)
                               const totalDayUsers = dateData.ranges.reduce(
                                 (sum, r) => sum + r.total_users,
                                 0
                               );
+                              return totalDayUsers > 0;
+                            })
+                            .map((dateData, dateIndex) => {
+                              const totalDayUsers = dateData.ranges.reduce(
+                                (sum, r) => sum + r.total_users,
+                                0
+                              );
+                              // Get all ranges from dates with data
+                              const datesWithDataForRanges =
+                                analyticsData.data.weeklyBreakdown.filter(
+                                  (dateData) => {
+                                    const totalDayUsers =
+                                      dateData.ranges.reduce(
+                                        (sum, r) => sum + r.total_users,
+                                        0
+                                      );
+                                    return totalDayUsers > 0;
+                                  }
+                                );
                               const allRanges =
-                                analyticsData.data.weeklyBreakdown[0]?.ranges.filter(
+                                datesWithDataForRanges[0]?.ranges?.filter(
                                   (r) => {
-                                    return analyticsData.data.weeklyBreakdown.some(
+                                    return datesWithDataForRanges.some(
                                       (day) =>
                                         day.ranges.find(
                                           (r2) =>
@@ -1123,8 +1611,7 @@ const SpiceGoldAnalytics = () => {
                                   </td>
                                 </tr>
                               );
-                            }
-                          )}
+                            })}
                         </tbody>
                       </table>
                     </div>

@@ -16,7 +16,22 @@ interface WeeklyRangeData {
 
 interface WeeklyDateData {
   date: string;
+  unique_users?: number;
   ranges: WeeklyRangeData[];
+}
+
+interface NewApiResponse {
+  code: number;
+  data: {
+    daily: WeeklyDateData[];
+    aggregated: {
+      unique_users: number;
+      totalSg: number;
+      averageSg: number;
+      ranges: RangeData[];
+    };
+  };
+  message: string;
 }
 
 interface MonthlyResponse {
@@ -56,6 +71,9 @@ export interface NormalizedSpiceGoldData {
     total_users: number;
     ranges: RangeData[];
     weeklyBreakdown?: WeeklyDateData[]; // For weekly view, include daily breakdown
+    unique_users?: number; // From aggregated data
+    totalSg?: number; // From aggregated data
+    averageSg?: number; // From aggregated data
   };
   message: string;
 }
@@ -105,7 +123,31 @@ export const useSpiceGoldAnalytics = (timePeriod: TimePeriod) => {
         throw new Error(result.message || "Failed to fetch data");
       }
 
-      // Normalize different response structures
+      // Check if this is the new API response structure (with daily and aggregated)
+      if (
+        result.data &&
+        typeof result.data === "object" &&
+        "daily" in result.data &&
+        "aggregated" in result.data
+      ) {
+        const newApiData = result as NewApiResponse;
+
+        // Use aggregated data for ranges and stats
+        return {
+          code: newApiData.code,
+          data: {
+            total_users: newApiData.data.aggregated.unique_users,
+            ranges: newApiData.data.aggregated.ranges,
+            weeklyBreakdown: newApiData.data.daily, // Include daily breakdown
+            unique_users: newApiData.data.aggregated.unique_users,
+            totalSg: newApiData.data.aggregated.totalSg,
+            averageSg: newApiData.data.aggregated.averageSg,
+          },
+          message: newApiData.message,
+        };
+      }
+
+      // Normalize different response structures (old API format)
       if (timePeriod === "monthly") {
         // Monthly response: data is array of dates, each with ranges (same structure as weekly)
         const monthlyData = result as WeeklyResponse;

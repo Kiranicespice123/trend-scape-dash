@@ -1,4 +1,4 @@
-import { Home, BarChart3 } from "lucide-react";
+import { Home, BarChart3, Trophy } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -37,6 +37,11 @@ const menuItems = [
     title: "SpiceGold Report",
     url: "/spicegold_analytics",
     icon: SpiceGoldIcon,
+  },
+  {
+    title: "Top Players",
+    url: "/top_players",
+    icon: Trophy,
   },
 ];
 
