@@ -123,6 +123,13 @@ const Analytics = () => {
           old: acc.old + item.old,
           new: acc.new + item.new,
           firstTime: acc.firstTime + item.firstTime,
+          todayCreated: (acc.todayCreated || 0) + (item.todayCreated || 0),
+          firstTimeVisitorsCreated:
+            (acc.firstTimeVisitorsCreated || 0) +
+            (item.firstTimeVisitorsCreated || 0),
+          nonFirstTimeVisitorsCreated:
+            (acc.nonFirstTimeVisitorsCreated || 0) +
+            (item.nonFirstTimeVisitorsCreated || 0),
         }),
         {
           page: "landing_page",
@@ -130,6 +137,9 @@ const Analytics = () => {
           old: 0,
           new: 0,
           firstTime: 0,
+          todayCreated: 0,
+          firstTimeVisitorsCreated: 0,
+          nonFirstTimeVisitorsCreated: 0,
         }
       );
     }
@@ -148,28 +158,50 @@ const Analytics = () => {
   // Aggregate data by page for display (especially important for weekly/monthly)
   // Normalize 'credential' to 'landing_page' for consistency
   const aggregatedByPage =
-    analyticsData?.reduce((acc, item) => {
-      // Normalize credential to landing_page
-      const normalizedPage =
-        item.page === "credential" ? "landing_page" : item.page;
-      const existing = acc.find((a) => a.page === normalizedPage);
-      if (existing) {
-        existing.totalUsers += item.totalUsers;
-        existing.old += item.old;
-        existing.new += item.new;
-        existing.firstTime += item.firstTime; // Include firstTime in aggregation
-      } else {
-        acc.push({
-          page: normalizedPage,
-          totalUsers: item.totalUsers,
-          old: item.old,
-          new: item.new,
-          firstTime: item.firstTime, // Include firstTime in aggregation
-        });
-      }
-      return acc;
-    }, [] as Array<{ page: string; totalUsers: number; old: number; new: number; firstTime: number }>) ||
-    [];
+    analyticsData?.reduce(
+      (acc, item) => {
+        // Normalize credential to landing_page
+        const normalizedPage =
+          item.page === "credential" ? "landing_page" : item.page;
+        const existing = acc.find((a) => a.page === normalizedPage);
+        if (existing) {
+          existing.totalUsers += item.totalUsers;
+          existing.old += item.old;
+          existing.new += item.new;
+          existing.firstTime += item.firstTime;
+          existing.todayCreated =
+            (existing.todayCreated || 0) + (item.todayCreated || 0);
+          existing.firstTimeVisitorsCreated =
+            (existing.firstTimeVisitorsCreated || 0) +
+            (item.firstTimeVisitorsCreated || 0);
+          existing.nonFirstTimeVisitorsCreated =
+            (existing.nonFirstTimeVisitorsCreated || 0) +
+            (item.nonFirstTimeVisitorsCreated || 0);
+        } else {
+          acc.push({
+            page: normalizedPage,
+            totalUsers: item.totalUsers,
+            old: item.old,
+            new: item.new,
+            firstTime: item.firstTime,
+            todayCreated: item.todayCreated || 0,
+            firstTimeVisitorsCreated: item.firstTimeVisitorsCreated || 0,
+            nonFirstTimeVisitorsCreated: item.nonFirstTimeVisitorsCreated || 0,
+          });
+        }
+        return acc;
+      },
+      [] as Array<{
+        page: string;
+        totalUsers: number;
+        old: number;
+        new: number;
+        firstTime: number;
+        todayCreated: number;
+        firstTimeVisitorsCreated: number;
+        nonFirstTimeVisitorsCreated: number;
+      }>
+    ) || [];
 
   // Get landing_page data from aggregatedByPage for the pie chart
   const landingPageData = aggregatedByPage.find(
@@ -191,6 +223,17 @@ const Analytics = () => {
     },
   ];
 
+  const visitorsCreatedData = [
+    {
+      name: "First Time Visitors Created",
+      value: credentialPageData?.firstTimeVisitorsCreated || 0,
+    },
+    {
+      name: "Non-First Time Visitors Created",
+      value: credentialPageData?.nonFirstTimeVisitorsCreated || 0,
+    },
+  ];
+
   const pageDistributionData = aggregatedByPage;
   const overallTotalUsers = aggregatedByPage.reduce(
     (sum, item) => sum + item.totalUsers,
@@ -204,6 +247,11 @@ const Analytics = () => {
     "hsl(142 71% 45%)", // New Users (green)
     "hsl(262 83% 58%)", // First Time Users (purple)
   ];
+  // Colors for Visitors Created chart
+  const VISITORS_CREATED_COLORS = [
+    "hsl(142 71% 45%)", // First Time Visitors Created (green)
+    "hsl(45 93% 47%)", // Non-First Time Visitors Created (yellow)
+  ];
 
   const chartConfig = {
     landing_page: { label: "Landing Page", color: COLORS[0] },
@@ -212,6 +260,14 @@ const Analytics = () => {
     old: { label: "Old Users", color: USER_COLORS[0] },
     new: { label: "New Users", color: USER_COLORS[2] },
     firstTime: { label: "First Time Users", color: USER_COLORS[1] },
+    firstTimeVisitorsCreated: {
+      label: "First Time Visitors Created",
+      color: VISITORS_CREATED_COLORS[0],
+    },
+    nonFirstTimeVisitorsCreated: {
+      label: "Non-First Time Visitors Created",
+      color: VISITORS_CREATED_COLORS[1],
+    },
   };
 
   // Helper function to get formatted page label
@@ -240,6 +296,9 @@ const Analytics = () => {
       "New Users",
       "Old Users",
       "First Time Users",
+      "Today Created",
+      "First Time Visitors Created",
+      "Non-First Time Visitors Created",
     ];
     const csvContent =
       headers.join(",") +
@@ -249,7 +308,9 @@ const Analytics = () => {
           (item) =>
             `${getPageLabel(item.page)},${item.totalUsers},${item.new},${
               item.old
-            },${item.firstTime}`
+            },${item.firstTime},${item.todayCreated || 0},${
+              item.firstTimeVisitorsCreated || 0
+            },${item.nonFirstTimeVisitorsCreated || 0}`
         )
         .join("\n");
 
@@ -295,6 +356,10 @@ const Analytics = () => {
       "New Users",
       "Old Users",
       "First Time Users",
+      "Today Created",
+      "First Time Visitors Created",
+      "Non-First Time Visitors Created",
+      "Record Date",
     ];
     const csvContent =
       headers.join(",") +
@@ -306,7 +371,9 @@ const Analytics = () => {
               item.date ? format(new Date(item.date), "yyyy-MM-dd") : ""
             },${getPageLabel(item.page)},${item.totalUsers},${item.new},${
               item.old
-            },${item.firstTime}`
+            },${item.firstTime},${item.todayCreated || 0},${
+              item.firstTimeVisitorsCreated || 0
+            },${item.nonFirstTimeVisitorsCreated || 0},${item.recordDate || ""}`
         )
         .join("\n");
 
@@ -363,7 +430,7 @@ const Analytics = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
             <div className="text-center p-2 rounded-xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">
                 Total Users (Landing Page)
@@ -394,6 +461,30 @@ const Analytics = () => {
               </div>
               <div className="text-2xl md:text-3xl font-bold text-purple-500">
                 {credentialPageData?.new || 0}
+              </div>
+            </div>
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">
+                Today Created
+              </div>
+              <div className="text-2xl md:text-3xl font-bold text-blue-500">
+                {credentialPageData?.todayCreated || 0}
+              </div>
+            </div>
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">
+                First Time Visitors Created
+              </div>
+              <div className="text-2xl md:text-3xl font-bold text-green-500">
+                {credentialPageData?.firstTimeVisitorsCreated || 0}
+              </div>
+            </div>
+            <div className="text-center p-2 rounded-xl bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 hover:scale-105 transition-transform duration-300">
+              <div className="text-xs text-muted-foreground mb-1">
+                Non-First Time Visitors Created
+              </div>
+              <div className="text-2xl md:text-3xl font-bold text-yellow-500">
+                {credentialPageData?.nonFirstTimeVisitorsCreated || 0}
               </div>
             </div>
           </div>
@@ -720,6 +811,39 @@ const Analytics = () => {
               </div>
             </div>
 
+            {/* Visitors Created Chart */}
+            <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500">
+              <h3 className="text-sm font-semibold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Visitors Created Distribution
+              </h3>
+              <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Pie
+                      data={visitorsCreatedData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {visitorsCreatedData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={VISITORS_CREATED_COLORS[index]}
+                        />
+                      ))}
+                    </Pie>
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+
             {/* Modern Data Table */}
             {showDetailedAnalytics && (
               <div className="glass-card rounded-2xl p-4 hover:shadow-2xl hover:shadow-secondary/10 transition-all duration-500">
@@ -886,6 +1010,10 @@ const Analytics = () => {
                               new: pageItem?.new || 0,
                               old: pageItem?.old || 0,
                               firstTime: pageItem?.firstTime || 0,
+                              firstTimeVisitorsCreated:
+                                pageItem?.firstTimeVisitorsCreated || 0,
+                              nonFirstTimeVisitorsCreated:
+                                pageItem?.nonFirstTimeVisitorsCreated || 0,
                             };
                           });
 
@@ -985,6 +1113,41 @@ const Analytics = () => {
                                     )}
                                   </span>
                                 </div>
+                                <div className="flex items-center gap-1">
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{
+                                      backgroundColor:
+                                        VISITORS_CREATED_COLORS[0],
+                                    }}
+                                  />
+                                  <span className="text-muted-foreground">
+                                    First Time Visitors Created:{" "}
+                                    {pageData.reduce(
+                                      (sum, d) =>
+                                        sum + (d.firstTimeVisitorsCreated || 0),
+                                      0
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{
+                                      backgroundColor:
+                                        VISITORS_CREATED_COLORS[1],
+                                    }}
+                                  />
+                                  <span className="text-muted-foreground">
+                                    Non-First Time Visitors Created:{" "}
+                                    {pageData.reduce(
+                                      (sum, d) =>
+                                        sum +
+                                        (d.nonFirstTimeVisitorsCreated || 0),
+                                      0
+                                    )}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1045,6 +1208,20 @@ const Analytics = () => {
                           stroke={COLORS[0]}
                           strokeWidth={2}
                           dot={{ r: 3 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="firstTimeVisitorsCreated"
+                          stroke={VISITORS_CREATED_COLORS[0]}
+                          strokeWidth={1.5}
+                          dot={{ r: 2 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="nonFirstTimeVisitorsCreated"
+                          stroke={VISITORS_CREATED_COLORS[1]}
+                          strokeWidth={1.5}
+                          dot={{ r: 2 }}
                         />
                         <Line
                           type="monotone"

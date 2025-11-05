@@ -8,7 +8,12 @@ interface AnalyticsData {
   totalUsers: number;
   old: number;
   new: number;
-  firstTime: number; // Added based on new API response
+  firstTime: number;
+  todayCreated?: number;
+  firstTimeVisitorsCreated?: number;
+  nonFirstTimeVisitorsCreated?: number;
+  recordDate?: string;
+  createdTime?: string | null;
   date?: string; // Added for monthly/weekly data
 }
 
@@ -19,7 +24,12 @@ interface NestedAnalyticsData {
     totalUsers: number;
     old: number;
     new: number;
-    firstTime: number; // Added based on new API response
+    firstTime: number;
+    todayCreated?: number;
+    firstTimeVisitorsCreated?: number;
+    nonFirstTimeVisitorsCreated?: number;
+    recordDate?: string;
+    createdTime?: string | null;
   }>;
 }
 
