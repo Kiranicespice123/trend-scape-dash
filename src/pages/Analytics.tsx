@@ -296,9 +296,9 @@ const Analytics = () => {
       "New Users",
       "Old Users",
       "First Time Users",
-      "Today Created",
-      "First Time Visitors Created",
-      "Non-First Time Visitors Created",
+      "Today Registered",
+      "First Time Visitors Registered",
+      "Non-First Time Visitors Registered",
     ];
     const csvContent =
       headers.join(",") +
@@ -356,9 +356,9 @@ const Analytics = () => {
       "New Users",
       "Old Users",
       "First Time Users",
-      "Today Created",
-      "First Time Visitors Created",
-      "Non-First Time Visitors Created",
+      "Today Registered",
+      "First Time Visitors Registered",
+      "Non-First Time Visitors Registered",
       "Record Date",
     ];
     const csvContent =
@@ -465,7 +465,7 @@ const Analytics = () => {
             </div>
             <div className="text-center p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">
-                Today Created
+                Today Registered
               </div>
               <div className="text-2xl md:text-3xl font-bold text-blue-500">
                 {credentialPageData?.todayCreated || 0}
@@ -473,7 +473,7 @@ const Analytics = () => {
             </div>
             <div className="text-center p-2 rounded-xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">
-                First Time Visitors Created
+                First Time Visitors Registered
               </div>
               <div className="text-2xl md:text-3xl font-bold text-green-500">
                 {credentialPageData?.firstTimeVisitorsCreated || 0}
@@ -481,7 +481,7 @@ const Analytics = () => {
             </div>
             <div className="text-center p-2 rounded-xl bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border border-yellow-500/20 hover:scale-105 transition-transform duration-300">
               <div className="text-xs text-muted-foreground mb-1">
-                Non-First Time Visitors Created
+                Non-First Time Visitors Registered
               </div>
               <div className="text-2xl md:text-3xl font-bold text-yellow-500">
                 {credentialPageData?.nonFirstTimeVisitorsCreated || 0}

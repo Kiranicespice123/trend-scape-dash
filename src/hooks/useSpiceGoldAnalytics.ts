@@ -65,6 +65,7 @@ interface TopEarner {
   developerId: string;
   firstName?: string;
   lastName?: string;
+  mobile?: string;
 }
 
 // Normalized response type

@@ -120,6 +120,7 @@ const TopPlayers = () => {
       "Bharat Pass",
       "Total Event Count",
       "Total Reward Points (SG)",
+      "Mobile",
     ];
     const rows = topEarners.map((earner) => [
       earner.rank,
@@ -130,6 +131,7 @@ const TopPlayers = () => {
       earner.hasBharatPass || "",
       earner.totalEventCount || "",
       earner.totalRewardPoints,
+      earner.mobile || "",
     ]);
 
     const csvContent = [
@@ -421,6 +423,7 @@ const TopPlayers = () => {
                   <th className="text-center py-2 px-3 font-medium">
                     Bharat Pass
                   </th>
+                  <th className="text-left py-2 px-3 font-medium">Mobile</th>
                   <th className="text-right py-2 px-3 font-medium">
                     Total Events
                   </th>
@@ -468,6 +471,9 @@ const TopPlayers = () => {
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
+                    </td>
+                    <td className="py-2 px-3 text-left">
+                      {earner.mobile || "-"}
                     </td>
                     <td className="py-2 px-3 text-right">
                       {earner.totalEventCount?.toLocaleString() || "-"}
